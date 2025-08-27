@@ -56,60 +56,41 @@ python us-bea.py --help
 ### Core Trade Tables (Enhanced from existing)
 
 #### trade.csv (Base Table)
-```csv
 trade_id, year, region1, region2, industry1, industry2, amount
-```
+
 - **trade_id**: 5-value composite key (year, region1, region2, industry1, industry2)
 - Links to all other tables as primary foreign key
 
 #### bea_trade_detail.csv (BEA API Enhancement)  
-```csv
 trade_id, bea_commodity_code, bea_industry_code, trade_balance, import_value, export_value, trade_partner_state, transport_mode
-```
 
 #### state_trade_flows.csv (State-Level Analysis)
-```csv 
 trade_id, origin_state, destination_state, state_industry_code, flow_value, flow_type, employment_impact
-```
 
 #### trade_price_indices.csv (Economic Indicators)
-```csv
 trade_id, import_price_index, export_price_index, exchange_rate, price_year, currency_adjustment_factor
-```
 
 ### Enhanced Factor Tables
 
 #### flow.csv (FEDEFL Integration)
-```csv
 flow_uuid, flowable, context, unit, compartment, flow_class, preferred, external_reference
-```
 
 #### bea_industry_mapping.csv (Industry Concordance)
-```csv
 industry_id, exiobase_sector, bea_sector_code, bea_sector_name, naics_code, aggregation_level
-```
 
-#### trade_factor_bea.csv (BEA-Specific Factors)
-```csv 
+#### trade_factor_bea.csv (BEA-Specific Factors) 
 trade_id, factor_id, coefficient_value, bea_multiplier, regional_adjustment, data_source
-```
 
 ### Analytical Enhancement Tables
 
 #### export_competitiveness.csv (Export Analysis)
-```csv
 trade_id, revealed_comparative_advantage, export_sophistication_index, market_share, growth_rate
-```
 
 #### import_dependency.csv (Import Analysis)  
-```csv
 trade_id, import_penetration_ratio, supply_chain_vulnerability, alternative_suppliers, strategic_importance
-```
 
 #### state_industry_impacts.csv (State Economic Impact)
-```csv
 state_code, industry_code, direct_jobs, indirect_jobs, induced_jobs, total_output_impact, tax_revenue_impact
-```
 
 ## Implementation Architecture
 
