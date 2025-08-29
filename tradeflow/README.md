@@ -10,7 +10,7 @@ Trade is traditionally called flow, but the term lacks clarity when relating ann
 
 Later, the 6-character "commodity" sectors can reside in the 5-character "trade" tables, or in tables starting with "commodity".
 
-Combing state-to-state consumption: [Exiobase plus BEA](bea)
+Combing state-to-state consumption: [Exiobase plus BEA](bea) based on the [USEEIO repo](https://github.com/USEPA/USEEIO/tree/master/import_emission_factors)
 
 ## Processing Command
 
