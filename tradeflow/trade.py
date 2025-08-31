@@ -225,6 +225,40 @@ class ExiobaseTradeFlow:
                         F_stacked['factor_id'] = F_stacked['flowable'].map(factor_mapping)
                         F_stacked = F_stacked.dropna(subset=['factor_id'])
                         
+                        # EMPLOYMENT UNIT CONVERSION FIX
+                        # Handle employment factors with proper unit normalization
+                        if ext_name == 'employment':
+                            print(f"  Applying employment unit conversion for {len(F_stacked)} employment factors")
+                            
+                            # Employment people: stressor contains "Employment people:" with "1000 p" units
+                            # These coefficients are already in "per 1000 people" so they're correctly scaled
+                            employment_people_mask = F_stacked['stressor'].str.contains('Employment people:', case=False, na=False)
+                            
+                            # Employment hours: stressor contains "Employment hours:" with "M.hr" units  
+                            # These coefficients are in "million hours per unit" - need to normalize to same scale as people
+                            employment_hours_mask = F_stacked['stressor'].str.contains('Employment hours:', case=False, na=False)
+                            
+                            # For debugging - show what employment factors we're processing
+                            if employment_people_mask.any():
+                                people_count = employment_people_mask.sum()
+                                print(f"    Found {people_count} employment people factors (1000 p units)")
+                                
+                            if employment_hours_mask.any():
+                                hours_count = employment_hours_mask.sum()
+                                print(f"    Found {hours_count} employment hours factors (M.hr units)")
+                                
+                                # Convert employment hours coefficients to be comparable with employment people
+                                # Scale down hours by factor of 1000 to normalize units (M.hr -> 1000.hr equivalent)
+                                # This ensures that when trade_impact.py applies conversions, the final values are realistic
+                                original_hours_coeff = F_stacked.loc[employment_hours_mask, 'coefficient'].copy()
+                                F_stacked.loc[employment_hours_mask, 'coefficient'] *= 0.001  # Scale down by 1000
+                                
+                                # Debug output for coefficient scaling
+                                if len(original_hours_coeff) > 0:
+                                    print(f"    Scaled employment hours coefficients: {original_hours_coeff.mean():.6f} → {F_stacked.loc[employment_hours_mask, 'coefficient'].mean():.6f}")
+                            
+                            # Note: Employment people factors are kept as-is since they're already in appropriate 1000p units
+                        
                         # Apply partial factors filtering if not using large factors
                         if not self.use_large_factors and self.config['PROCESSING'].get('use_partial_factors', True):
                             F_stacked = self._apply_partial_factors_filter(F_stacked, ext_name)

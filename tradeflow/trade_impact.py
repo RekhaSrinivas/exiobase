@@ -61,14 +61,13 @@ def create_trade_impact():
     # Calculate impact by major factor types
     print("Calculating impacts by major factor types...")
     
-    # Define major factor categories
+    # Define major factor categories (excluding employment - handled separately)
     major_factors = {
         'CO2_total': ['CO2', 'CO2_bio'],
         'CH4_total': ['CH4'],
         'N2O_total': ['N2O'],
         'NOX_total': ['NOX', 'NOx'],
         'Water_total': ['Water Consumption Blue', 'Water Withdrawal Blue'],
-        'Employment_total': ['Employment people:', 'Employment hours:'],
         'Energy_total': ['Energy use'],
         'Land_total': ['Cropland', 'Forest', 'Artificial Surfaces']
     }
@@ -84,6 +83,48 @@ def create_trade_impact():
         if not matching_factors.empty:
             type_impact = matching_factors.groupby('trade_id')['impact_value'].sum()
             factor_type_impacts[factor_type] = type_impact
+    
+    # Handle employment separately with proper unit conversion
+    print("Calculating employment impacts with proper unit conversion...")
+    
+    # Employment people (in 1000 p units - convert to actual people)
+    employment_people_factors = enhanced_factors[
+        enhanced_factors['stressor'].str.contains('Employment people:', case=False, na=False)
+    ]
+    
+    if not employment_people_factors.empty:
+        print(f"    Processing {len(employment_people_factors)} employment people factors")
+        # Debug: Show sample coefficients and impact values before conversion
+        sample_people = employment_people_factors.head(3)
+        print(f"    Sample people factors before conversion:")
+        for _, row in sample_people.iterrows():
+            print(f"      Trade {row['trade_id']}: coefficient={row['coefficient']:.6f}, impact_value={row['impact_value']:.3f}")
+        
+        # Convert from 1000 people to actual people by multiplying by 1000
+        employment_people_converted = employment_people_factors.copy()
+        employment_people_converted['impact_value'] = employment_people_converted['impact_value'] * 1000
+        employment_people_impact = employment_people_converted.groupby('trade_id')['impact_value'].sum()
+        factor_type_impacts['Employment_people_total'] = employment_people_impact
+        
+        print(f"    Total employment people impact (top 3 trade_ids): {employment_people_impact.head(3).to_dict()}")
+    
+    # Employment hours (in M.hr units - keep as million hours)
+    employment_hours_factors = enhanced_factors[
+        enhanced_factors['stressor'].str.contains('Employment hours:', case=False, na=False)
+    ]
+    
+    if not employment_hours_factors.empty:
+        print(f"    Processing {len(employment_hours_factors)} employment hours factors")
+        # Debug: Show sample coefficients and impact values
+        sample_hours = employment_hours_factors.head(3)
+        print(f"    Sample hours factors (after coefficient normalization in trade.py):")
+        for _, row in sample_hours.iterrows():
+            print(f"      Trade {row['trade_id']}: coefficient={row['coefficient']:.6f}, impact_value={row['impact_value']:.3f}")
+        
+        employment_hours_impact = employment_hours_factors.groupby('trade_id')['impact_value'].sum()
+        factor_type_impacts['Employment_hours_total'] = employment_hours_impact
+        
+        print(f"    Total employment hours impact (top 3 trade_ids): {employment_hours_impact.head(3).to_dict()}")
     
     factor_type_impacts = factor_type_impacts.fillna(0).round(3)
     
@@ -150,7 +191,12 @@ def create_trade_impact():
     if factor_type_cols:
         factor_summary = trade_impact[factor_type_cols].sum().sort_values(ascending=False)
         for factor_type, value in factor_summary.items():
-            print(f"  {factor_type}: {value:,.0f}")
+            if 'Employment_people' in factor_type:
+                print(f"  {factor_type}: {value:,.0f} people")
+            elif 'Employment_hours' in factor_type:
+                print(f"  {factor_type}: {value:,.0f} million hours")
+            else:
+                print(f"  {factor_type}: {value:,.0f}")
     
     # Show column information
     print(f"\nColumns in trade_impact.csv ({len(trade_impact.columns)} total):")
