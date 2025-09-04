@@ -1,6 +1,6 @@
 # Primary tables: <span style="color:#aaa">trade, factor, industry</span>
 
-Table naming designed for 3rd graders. [View Report Sample](../../profile/footprint/sample.html) from [Exiobase .csv output](https://github.com/ModelEarth/trade-data/tree/main/year) and [US State Data](../../trade/footprint/)
+Table naming designed for 3rd graders. [View Report Sample](../../profile/footprint/) from [Exiobase .csv output](https://github.com/ModelEarth/trade-data/tree/main/year) and [US State Data](../../trade/footprint/)
 
 **The trade_id field** in trade.csv relates 5 values (year, region1, region2, industry1, industry2) to multiple impact factors for each trade row.
 
