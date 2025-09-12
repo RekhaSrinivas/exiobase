@@ -1,0 +1,46 @@
+name,industry_id
+Paddy rice,PADDY
+Wheat,WHEAT
+Cereal grains nec,CEREA
+Vegetables,VEGET
+Oil seeds,OILSE
+Sugar cane,SUGAR
+Plant-based fibers,PLANT
+Crops nec,CROPS
+Cattle,CATTL
+Pigs,PIGS9
+Poultry,POULT
+Meat animals nec,MEATA
+Animal products nec,ANIMA
+Raw milk,RAWMI
+Wool,WOOLS
+Manure,MANUR
+Forestry,FORES
+Fishing,FISHF
+Coal mining,COALM
+Crude oil,CRUDE
+Natural gas,NATUR
+Iron ores,IRON1
+Non-ferrous metal ores,NFMET
+Other mining,OMINE
+Food products,FOODS
+Beverages,BEVER
+Textiles,TEXTI
+Clothing,CLOTH
+Leather products,LEATH
+Wood products,WOODP
+Paper products,PAPER
+Petroleum,PETRO
+Chemicals,CHEMI
+Machinery,MACHI
+Electronics,ELECT
+Construction,CONST
+Trade,TRADE
+Hotels & restaurants,HOTEL
+Transport,TRANS
+Financial services,FINAN
+Education,EDUCA
+Health services,HEALT
+Public administration,PUBAD
+Other services,OTHRS
+Unmapped,-1

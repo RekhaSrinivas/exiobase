@@ -1,0 +1,201 @@
+name,industry_id
+Additives/Blending Components,ADDIT
+Air transport services (62),AIRTR
+Aluminium and aluminium products,ALUM1
+Aluminium ores and concentrates,ALUMI
+Animal products nec,ANIMA
+Anthracite,ANTHR
+"Ash for treatment, Re-processing of ash into clinker",ASHFO
+Aviation Gasoline,AVIAT
+BKB/Peat Briquettes,BKBPE
+Basic iron and steel and of ferro-alloys and first products thereof,BASIC
+Beverages,BEVER
+Biodiesels,BIODI
+Biogas,BIOG1
+Biogasoline,BIOGA
+Bitumen,BITUM
+Blast Furnace Gas,BLAST
+"Bottles for treatment, Recycling of bottles by direct reuse",BOTTL
+"Bricks, tiles and construction products, in baked clay",BRICK
+Cattle,CATTL
+"Cement, lime and plaster",CEMEN
+Ceramic goods,CERAM
+Cereal grains nec,CEREA
+Charcoal,CHARC
+"Chemical and fertilizer minerals, salt and other mining and quarrying products n.e.c.",CHEMI
+Chemicals nec,CHEM1
+Coal Tar,COALT
+Coke Oven Coke,COKEO
+Coke oven gas,COKE1
+Coking Coal,COKIN
+"Collected and purified water, distribution services of water (41)",COLLE
+Computer and related services (72),COMPU
+Construction work (45),CONST
+Copper ores and concentrates,COPPE
+Copper products,COPP1
+Crops nec,CROPS
+"Crude petroleum and services related to crude oil extraction, excluding surveying",CRUDE
+Dairy products,DAIRY
+Distribution and trade services of electricity,DISTR
+Distribution services of gaseous fuels through mains,DIST1
+Education services (80),EDUCA
+Electrical machinery and apparatus n.e.c. (31),ELECT
+Electricity by Geothermal,ELECB
+Electricity by biomass and waste,ELEC7
+Electricity by coal,ELEC1
+Electricity by gas,ELEC2
+Electricity by hydro,ELEC4
+Electricity by nuclear,ELEC3
+Electricity by petroleum and other oil derivatives,ELEC6
+Electricity by solar photovoltaic,ELEC8
+Electricity by solar thermal,ELEC9
+"Electricity by tide, wave, ocean",ELECA
+Electricity by wind,ELEC5
+Electricity nec,ELECC
+Ethane,ETHAN
+Extra-territorial organizations and bodies,EXTRA
+"Fabricated metal products, except machinery and equipment (28)",FABRI
+"Financial intermediation services, except insurance and pension funding services (65)",FINAN
+Fish and other fishing products; services incidental of fishing (05),FISHA
+Fish products,FISHP
+Food products nec,FOODP
+Food waste for treatment: biogasification and land application,FOOD1
+Food waste for treatment: composting and land application,FOOD2
+Food waste for treatment: incineration,FOODW
+Food waste for treatment: landfill,FOOD4
+Food waste for treatment: waste water treatment,FOOD3
+Foundry work services,FOUND
+Furniture; other manufactured goods n.e.c. (36),FURNI
+Gas Coke,GASCO
+Gas Works Gas,GASWO
+Gas/Diesel Oil,GASDI
+Gasoline Type Jet Fuel,GASOL
+Glass and glass products,GLASS
+Health and social work services (85),HEALT
+Heavy Fuel Oil,HEAVY
+Hotel and restaurant services (55),HOTEL
+Inert/metal/hazardous waste for treatment: landfill,INERT
+Inland water transportation services,INLAN
+"Insurance and pension funding services, except compulsory social security services (66)",INSUR
+Intert/metal waste for treatment: incineration,INTER
+Iron ores,IRONO
+Kerosene,KERO1
+Kerosene Type Jet Fuel,KEROS
+"Lead, zinc and tin and products thereof",LEAD1
+"Lead, zinc and tin ores and concentrates",LEADZ
+Leather and leather products (19),LEATH
+Lignite/Brown Coal,LIGNI
+Liquefied Petroleum Gases (LPG),LIQUE
+Lubricants,LUBRI
+Machinery and equipment n.e.c. (29),MACHI
+Manure (biogas treatment),MANU1
+Manure (conventional treatment),MANUR
+Meat animals nec,MEATA
+Meat products nec,MEATP
+"Medical, precision and optical instruments, watches and clocks (33)",MEDIC
+Membership organisation services n.e.c. (91),MEMBE
+Motor Gasoline,MOTOR
+"Motor vehicles, trailers and semi-trailers (34)",MOTO1
+N-fertiliser,NFERT
+Naphtha,NAPHT
+Natural Gas Liquids,NATU1
+"Natural gas and services related to natural gas extraction, excluding surveying",NATUR
+Nickel ores and concentrates,NICKE
+Non-specified Petroleum Products,NONSP
+Nuclear fuel,NUCLE
+Office machinery and computers (30),OFFIC
+Oil seeds,OILSE
+Oil/hazardous waste for treatment: incineration,OILHA
+Other Bituminous Coal,OTHER
+Other Hydrocarbons,OTHE1
+Other Liquid Biofuels,OTHE3
+Other business services (74),OTHE8
+Other land transportation services,OTHE7
+Other non-ferrous metal ores and concentrates,OTHE2
+Other non-ferrous metal products,OTHE5
+Other non-metallic mineral products,OTHE4
+Other services (93),OTHEA
+Other transport equipment (35),OTHE6
+Other waste for treatment: waste water treatment,OTHE9
+Oxygen Steel Furnace Gas,OXYGE
+P- and other fertiliser,PANDO
+Paddy rice,PADDY
+Paper and paper products,PAPER
+Paper and wood waste for treatment: composting and land application,PAPE3
+Paper for treatment: landfill,PAPE4
+Paper waste for treatment: biogasification and land application,PAPE2
+Paper waste for treatment: incineration,PAPE1
+Paraffin Waxes,PARAF
+Patent Fuel,PATEN
+Peat,PEATX
+Petroleum Coke,PETRO
+Pigs,PIGSX
+Plant-based fibers,PLANT
+Plastic waste for treatment: incineration,PLAS1
+Plastic waste for treatment: landfill,PLAS2
+"Plastics, basic",PLAST
+Post and telecommunication services (64),POSTA
+Poultry,POULT
+Precious metal ores and concentrates,PRECI
+Precious metals,PREC1
+Printed matter and recorded media (22),PRINT
+Private households with employed persons (95),PRIVA
+Processed rice,PROCE
+"Products of forestry, logging and related services (02)",PRODU
+Products of meat cattle,PROD1
+Products of meat pigs,PROD2
+Products of meat poultry,PROD3
+Public administration and defence services; compulsory social security services (75),PUBLI
+Pulp,PULPX
+"Radio, television and communication equipment and apparatus (32)",RADIO
+Railway transportation services,RAILW
+Raw milk,RAWMI
+Real estate services (70),REALE
+"Recreational, cultural and sporting services (92)",RECRE
+Refinery Feedstocks,REFI1
+Refinery Gas,REFIN
+Renting services of machinery and equipment without operator and of personal and household goods (71),RENTI
+Research and development services (73),RESEA
+"Retail  trade services, except of motor vehicles and motorcycles; repair services of personal and household goods (52)",RETA1
+Retail trade services of motor fuel,RETAI
+Rubber and plastic products (25),RUBBE
+"Sale, maintenance, repair of motor vehicles, motor vehicles parts, motorcycles, motor cycles parts and accessoiries",SALEM
+Sand and clay,SANDA
+Sea and coastal water transportation services,SEAAN
+"Secondary aluminium for treatment, Re-processing of secondary aluminium into new aluminium",SECO5
+"Secondary construction material for treatment, Re-processing of secondary construction material into aggregates",SECOA
+"Secondary copper for treatment, Re-processing of secondary copper into new copper",SECO7
+"Secondary glass for treatment, Re-processing of secondary glass into new glass",SECO2
+"Secondary lead for treatment, Re-processing of secondary lead into new lead",SECO6
+"Secondary other non-ferrous metals for treatment, Re-processing of secondary other non-ferrous metals into new other non-ferrous metals",SECO8
+"Secondary paper for treatment, Re-processing of secondary paper into new pulp",SECON
+"Secondary plastic for treatment, Re-processing of secondary plastic into new plastic",SECO1
+"Secondary preciuos metals for treatment, Re-processing of secondary preciuos metals into new preciuos metals",SECO4
+Secondary raw materials,SECO9
+"Secondary steel for treatment, Re-processing of secondary steel into new steel",SECO3
+Services auxiliary to financial intermediation (67),SERVI
+Sewage sludge for treatment: biogasification and land application,SEWAG
+Steam and hot water supply services,STEAM
+Stone,STONE
+Sub-Bituminous Coal,SUBBI
+Sugar,SUGA1
+"Sugar cane, sugar beet",SUGAR
+Supporting and auxiliary transport services; travel agency services (63),SUPPO
+Textiles (17),TEXTI
+Textiles waste for treatment: incineration,TEXT1
+Textiles waste for treatment: landfill,TEXT2
+Tobacco products (16),TOBAC
+Transmission services of electricity,TRANS
+Transportation services via pipelines,TRAN1
+Uranium and thorium ores (12),URANI
+"Vegetables, fruit, nuts",VEGET
+Wearing apparel; furs (18),WEARI
+Wheat,WHEAT
+White Spirit & SBP,WHITE
+"Wholesale trade and commission trade services, except of motor vehicles and motorcycles (51)",WHOLE
+Wood and products of wood and cork (except furniture); articles of straw and plaiting materials (20),WOODA
+"Wood material for treatment, Re-processing of secondary wood material into new wood material",WOODM
+Wood waste for treatment: incineration,WOODW
+Wood waste for treatment: landfill,WOOD1
+"Wool, silk-worm cocoons",WOOLS
+products of Vegetable oils and fats,PROD4
