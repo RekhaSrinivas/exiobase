@@ -340,6 +340,12 @@ class StateTradeAnalyzer:
                 })
         
         competitiveness_df = pd.DataFrame(competitiveness_data)
+        
+        # Ensure trade_id column is properly named and positioned first
+        if not competitiveness_df.empty:
+            cols = ['trade_id'] + [col for col in competitiveness_df.columns if col != 'trade_id']
+            competitiveness_df = competitiveness_df[cols]
+        
         print(f"      ✅ Analyzed competitiveness for {len(competitiveness_df)} export flows")
         
         return competitiveness_df
@@ -375,6 +381,12 @@ class StateTradeAnalyzer:
                 })
         
         dependency_df = pd.DataFrame(dependency_data)
+        
+        # Ensure trade_id column is properly named and positioned first
+        if not dependency_df.empty:
+            cols = ['trade_id'] + [col for col in dependency_df.columns if col != 'trade_id']
+            dependency_df = dependency_df[cols]
+        
         print(f"      ✅ Analyzed dependencies for {len(dependency_df)} import flows")
         
         return dependency_df
