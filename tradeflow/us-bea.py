@@ -505,8 +505,7 @@ class USBEATradeFlow:
             # Create US trade price indices table
             self._create_trade_price_indices(output_path)
             
-            # Create US-BEA industry mapping
-            self._create_bea_industry_mapping(output_path)
+            # Note: Using existing industry.csv file instead of generating bea_industry_mapping.csv
             
             # Create US state reference data
             self.state_analyzer.create_state_reference_data(output_path)
@@ -532,28 +531,6 @@ class USBEATradeFlow:
         
         price_indices.to_csv(output_path / 'trade_price_indices.csv', index=False)
     
-    def _create_bea_industry_mapping(self, output_path):
-        """Create US-BEA industry mapping table"""
-        # Load industry data
-        industry_file_str = get_reference_file_path(self.config, 'industries')
-        industry_file = Path(industry_file_str)
-        
-        if industry_file.exists():
-            industries = pd.read_csv(industry_file)
-            
-            mapping = pd.DataFrame({
-                'industry_id': industries.iloc[:, 0] if len(industries) > 0 else [],
-                'exiobase_sector': industries.iloc[:, 1] if len(industries.columns) > 1 else [],
-                'bea_sector_code': '',
-                'bea_sector_name': '',
-                'naics_code': '',
-                'aggregation_level': 'detail'
-            })
-        else:
-            mapping = pd.DataFrame(columns=['industry_id', 'exiobase_sector', 'bea_sector_code', 
-                                          'bea_sector_name', 'naics_code', 'aggregation_level'])
-        
-        mapping.to_csv(output_path / 'bea_industry_mapping.csv', index=False)
     
     def _generate_validation_report(self):
         """Generate comprehensive US-BEA validation report"""
@@ -610,7 +587,7 @@ class USBEATradeFlow:
             f.write(f"- `export_competitiveness.csv` - Export competitiveness analysis\n")
             f.write(f"- `import_dependency.csv` - Import dependency analysis\n")
             f.write(f"- `flow.csv` - FEDEFL flow details\n")
-            f.write(f"- `bea_industry_mapping.csv` - BEA industry concordance\n") 
+            f.write(f"- `industry.csv` - Industry mapping (using existing file from parent directory)\n") 
             f.write(f"- `state_industry_impacts.csv` - State economic impacts\n")
             f.write(f"- `trade_price_indices.csv` - Trade price indices\n\n")
         
