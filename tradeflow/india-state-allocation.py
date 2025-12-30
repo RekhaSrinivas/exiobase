@@ -1461,9 +1461,16 @@ class IndiaStateAllocator:
         print("="*60)
         
         if output_dir is None:
-            # Use config output directory
-            base_folder = self.config['FOLDERS']['base'].format(year=self.year)
-            output_dir = Path(base_folder) / 'IN' / 'state_allocation'
+    # Save inside: webroot/trade-data/year/temp/IN/domestic
+            project_root = Path(__file__).resolve().parents[2]  # /webroot
+            output_dir = (
+                project_root /
+                "trade-data" /
+                "year" /
+                "temp" /
+                "IN" /
+                "domestic"
+            )
         else:
             output_dir = Path(output_dir)
         
@@ -1494,7 +1501,8 @@ class IndiaStateAllocator:
         
         # Create summary report
         self._create_summary_report(output_dir)
-        
+        self.generate_india_states_summary(output_dir)
+
         print(f"\n✅ All outputs saved to: {output_dir}")
     
     def _sanitize_filename(self, filename):
@@ -1586,6 +1594,40 @@ class IndiaStateAllocator:
         print("\n" + "="*80)
         print("✅ ALLOCATION PROCESS COMPLETE")
         print("="*80)
+
+    def generate_india_states_summary(self, output_dir):
+
+        import pandas as pd
+        import os
+
+        print("\nGenerating india_states.csv summary file...")
+
+        state_sector_path = os.path.join(output_dir, "state_sector_output.csv")
+        if not os.path.exists(state_sector_path):
+            print("❌ ERROR: state_sector_output.csv not found — cannot build india_states.csv")
+            return
+
+        df = pd.read_csv(state_sector_path)
+
+        # Group totals
+        summary = df.groupby("state")["output"].sum().reset_index()
+
+        # Rename to match UI expectations
+        summary = summary.rename(columns={
+            "state": "State",
+            "output": "Output"
+        })
+
+        # Placeholder values until India employment/population are added
+        summary["Employment"] = 0
+        summary["Population"] = 0
+
+
+        target_path = os.path.join(output_dir, "india_states.csv")
+        summary.to_csv(target_path, index=False, sep=",")
+
+        print(f"✅ india_states.csv created at: {target_path}")
+
 
 
 def main():
