@@ -1461,13 +1461,13 @@ class IndiaStateAllocator:
         print("="*60)
         
         if output_dir is None:
-    # Save inside: webroot/trade-data/year/2022-2023/IN/domestic
+    # Save inside: webroot/trade-data/year/2023/IN/domestic
             project_root = Path(__file__).resolve().parents[2]  # /webroot
             output_dir = (
                 project_root /
                 "trade-data" /
                 "year" /
-                "2022-2023" /
+                "2023" /
                 "IN" /
                 "domestic"
             )
