@@ -1,10 +1,8 @@
 # US Bureau of Economic Analysis (BEA) Integration Specification
 
-## Overview
+The following US BEA integration with Exiobase international trade flow data uses the [industry.csv file](https://github.com/ModelEarth/trade-data/blob/main/year/2022/industry.csv) from the separate Exiobase pull of US domestic commodity flow. Columns are: industry_id, name (the exiobase sector information), and category.
 
-Note: The BEA process now uses the existing industry.csv file with columns: industry_id, name, category. The 'name' column contains the exiobase sector information.
-
-Create a comprehensive US-BEA data integration system that combines Exiobase MRIO data with US Bureau of Economic Analysis API data to generate relational trade flow tables. This system extends our existing exiobase/tradeflow architecture to include detailed US trade analysis with enhanced state-level and industry-specific insights. Developed by referencing [US generate_import_factors.py](https://github.com/USEPA/USEEIO/tree/master/import_emission_factors).
+The US-BEA data integration here combines Exiobase MRIO data with US Bureau of Economic Analysis API data to generate relational trade flow tables. This system extends our existing exiobase/tradeflow architecture to include detailed US trade analysis with enhanced state-level and industry-specific insights. Developed by referencing [US generate_import_factors.py](https://github.com/USEPA/USEEIO/tree/master/import_emission_factors).
 
 [Sample Report](../../trade-data/bea-dashboard/)
 
