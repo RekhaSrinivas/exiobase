@@ -505,7 +505,7 @@ class USBEATradeFlow:
             # Create US trade price indices table
             self._create_trade_price_indices(output_path)
             
-            # Note: Using existing industry.csv file instead of generating bea_industry_mapping.csv
+            # Note: Using existing industry.csv file instead of generating bea_industry_mapping.csv Delete: https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/bea_industry_mapping.csv
             
             # Create US state reference data
             self.state_analyzer.create_state_reference_data(output_path)

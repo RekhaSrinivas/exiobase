@@ -1,15 +1,16 @@
-# US Bureau of Economic Analysis (BEA) Integration Specification
+# US Interstate Trade 
 
-The following US BEA integration with Exiobase international trade flow data uses the [industry.csv file](https://github.com/ModelEarth/trade-data/blob/main/year/2022/industry.csv) from the separate Exiobase pull of US domestic commodity flow. Columns are: industry_id, name (the exiobase sector information), and category.
+### US Bureau of Economic Analysis (BEA) Integration with Exiobase tradeflow
 
 The US-BEA data integration here combines Exiobase MRIO data with US Bureau of Economic Analysis API data to generate relational trade flow tables. This system extends our existing exiobase/tradeflow architecture to include detailed US trade analysis with enhanced state-level and industry-specific insights. Developed by referencing [US generate_import_factors.py](https://github.com/USEPA/USEEIO/tree/master/import_emission_factors).
 
-[Sample Report](../../trade-data/bea-dashboard/)
+The following US BEA integration with Exiobase international trade flow data uses the [industry.csv file](https://github.com/ModelEarth/trade-data/blob/main/year/2019/industry.csv) from the separate Exiobase pull of US domestic commodity flow. Industry columns are: industry_id and name (the exiobase sector information).
 
-### Upcoming Reports
-- State-to-state domestic trade flows
-- State export competitiveness analysis
-- Import dependency by state
+### Reports
+- [Sample Report from Output](../../trade-data/bea-dashboard/)
+- State-to-state domestic trade flows (upcoming)
+- State export competitiveness analysis (upcoming)
+- Import dependency by state (upcoming)
 
 ## Configuration Settings
 
@@ -53,48 +54,118 @@ python us-bea.py --help
 - **Purpose**: Generate flow.csv with comprehensive flow details for each Flow UUID
 - **Fields**: FlowUUID, Flowable, Context, Unit, flow metadata
 
-## Relational Database Design (CSV Tables)
+## Tables Name and Column Design (for .csv import to SQL)
 
-### Core Trade Tables (Enhanced from existing)
+CSV Output preview resides in [trade-data/year/2019/US
+/domestic](https://github.com/ModelEarth/trade-data/tree/main/year/2019/US/domestic)
 
-#### trade.csv (Base Table)
+### Trade Tables
+
+IMPORTANT: The following TO DOs are updates to existing python processes. Don't add new processes that clean-up and rename within existing .csv files. Files will be generated as fresh output from the existing python.  Don't add extra python, add options existing.
+
+See our [BEA Python's Validation Readme](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/bea-report.md) for latest output overview.
+
+Here are the table and column names we're aiming for:
+
+#### [trade.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/trade.csv) -  trade for country
+
+For entire country (split by domestic, import and export)
+
 trade_id, year, region1, region2, industry1, industry2, amount
 
 - **trade_id**: 5-value composite key (year, region1, region2, industry1, industry2)
-- Links to all other tables as primary foreign key
+- Links to other tables as primary foreign key
 
-#### bea_trade_detail.csv (BEA API Enhancement)  
+Originates in our [international pull (from Exiobase)](../)
+
+TO DO
+Add a note here on how the BEA data pull makes use of the international "trade" table in domestic.
+Is it used for the total intra-US tradeflow for each industry?
+
+
+#### interstate.csv - Rename from [bea_trade_detail.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/bea_trade_detail.csv)
+
+<!--
 trade_id, bea_commodity_code, bea_industry_code, trade_balance, import_value, export_value, trade_partner_state, transport_mode
+-->
+trade_id, year, region1 (US-AK), region2 (US-GA), industry1, industry2, amount, 
+bea_commodity_code, bea_industry_code, economic_multiplier
 
-#### state_trade_flows.csv (State-Level Analysis)
+TO DOs
+Rename bea_trade_detail.csv to "interstate"
+
+TO DO - Remove "bea_" from these column names and explain use here:
+bea_commodity_code
+bea_industry_code
+economic_multiplier
+
+The "interstate" table has the same structure as the international "trade" table.
+In some SQL installs, we'll place state data in the "trade" table with multi-country trade data.
+
+
+#### interstate_factor - rename from [state_trade_flows.csv](https://raw.githubusercontent.com/ModelEarth/trade-data/refs/heads/main/year/2019/US/domestic/state_trade_flows.csv) (State-Level Analysis)
 trade_id, origin_state, destination_state, state_industry_code, flow_value, flow_type, employment_impact
 
-#### trade_price_indices.csv (Economic Indicators)
+TO DO:
+1. Change from "state_trade_flows" to "interstate_factor".
+2. Add interstate_id column
+3. Remove origin_state and destination_state column (those are now at interstate.region1 and interstate.region2 in the interstate table).
+
+#### [trade_price_indices.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/trade_price_indices.csv) (Economic Indicators)
 trade_id, import_price_index, export_price_index, exchange_rate, price_year, currency_adjustment_factor
 
-### Enhanced Factor Tables
+TO DO
+Why is the table above empty?
 
-#### flow.csv (FEDEFL Integration)
-flow_uuid, flowable, context, unit, compartment, flow_class, preferred, external_reference
-
-#### industry.csv (Industry Mapping - using existing file)
+#### [industry.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/industry.csv) (industry category names)
 industry_id, name, category
 
-*Note: This file already exists in the parent directory (year/2019/industry.csv) and is generated by other Python scripts in the tradeflow folder. The BEA process uses this existing file instead of generating a separate bea_industry_mapping.csv file. The 'name' column contains the exiobase sector names that were previously in the exiobase_sector column.*
+Used by all countries and states. Industry Mapping - using existing file
+
+*Note: Resides at the root of the annual directory (year/2019/industry.csv) and is generated by other Python scripts in the tradeflow folder. The BEA process uses this existing file instead of generating a separate [bea_industry_mapping.csv file](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/bea_industry_mapping.csv) - delete that.  The 'name' column contains the exiobase sector names that were previously in the exiobase_sector column.*
+
 
 #### trade_factor_bea.csv (BEA-Specific Factors) 
+
 trade_id, factor_id, coefficient_value, bea_multiplier, regional_adjustment, data_source
+
+TO DO: Where is the file above?
+
+Similar to [trade_factor.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/trade_factor.csv)
+
+TO DO
+
+When csv file and column names are changed above, update [Sample Report from Output](../../trade-data/bea-dashboard/)
+
+
+#### [flow.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/flow.csv) (FEDEFL Integration)
+flow_uuid, flowable, context, unit, compartment, flow_class, preferred, external_reference
+
+"flow" was included here to review. It will NOT be a SQL table. 
+The "[flow](https://github.com/ModelEarth/trade-data/blob/main/year/2019/flow.csv) " table is NOT in our relational data structure since it resides in "trade", "interstate" and "factor"
+
+Probably NOT useing here. Replaced by our "[factor](https://github.com/ModelEarth/trade-data/blob/main/year/2019/factor.csv)" table.
+And in our table naming, "[trade](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/trade.csv)" and "interstate" contain the trade flow (currently [state_trade_flows.csv](https://raw.githubusercontent.com/ModelEarth/trade-data/refs/heads/main/year/2019/US/domestic/state_trade_flows.csv)).
+
+
 
 ### Analytical Enhancement Tables
 
-#### export_competitiveness.csv (Export Analysis)
+These won't be needed in SQL since the can be table joins.
+
+#### [export_competitiveness.csv](https://raw.githubusercontent.com/ModelEarth/trade-data/refs/heads/main/year/2019/US/exports/export_competitiveness.csv) (Export Analysis)
 trade_id, revealed_comparative_advantage, export_sophistication_index, market_share, growth_rate
 
-#### import_dependency.csv (Import Analysis)  
+#### [import_dependency.csv](https://raw.githubusercontent.com/ModelEarth/trade-data/refs/heads/main/year/2019/US/imports/import_dependency.csv) (Import Analysis)  
 trade_id, import_penetration_ratio, supply_chain_vulnerability, alternative_suppliers, strategic_importance
 
-#### state_industry_impacts.csv (State Economic Impact)
+#### [state_industry_impacts.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/state_industry_impacts.csv) (State Economic Impact)
+
 state_code, industry_code, direct_jobs, indirect_jobs, induced_jobs, total_output_impact, tax_revenue_impact
+
+TO DO: Rename "state_code" to "region" and prepend the country
+
+region (US-AK)
 
 ## Implementation Architecture
 
@@ -145,10 +216,9 @@ class USBEATradeFlow(ExiobaseTradeFlow):
 ## Processing Pipeline
 
 ### Phase 1: Base Data Generation
-1. **Exiobase Processing** (leverage existing trade.py patterns)
-   - Download IOT_[year]_pxp.zip if not available
-   - Extract Z, Y, F matrices 
-   - Generate base trade.csv with trade_id structure
+1. **Exiobase** (leverage existing trade.py patterns)
+
+   - Reuse pre-generated trade.csv with trade_id structure (was extracted from Exiobase Z, Y, F matrices by auto-downloading IOT_[year]_pxp.zip)
    - Use existing industry.csv and factor.csv reference files from parent directory
 
 ### Phase 2: BEA API Enhancement
@@ -162,80 +232,50 @@ class USBEATradeFlow(ExiobaseTradeFlow):
 3. **Data Integration**
    - Map Exiobase sectors to BEA industry codes
    - Reconcile trade values between data sources
+   <!-- This can be done later with SQL
    - Create comprehensive industry concordance
    - Generate enhanced trade factor coefficients
+   -->
 
 ### Phase 4: State-Level Disaggregation
 4. **State Analysis**
    - Disaggregate national flows to state level using BEA data
    - Calculate state-specific employment impacts
-   - Analyze export competitiveness by state and industry
+   - Analyze export competitiveness by state and industry (also to be done in SQL)
    - Create import dependency assessments
 
 ### Phase 5: Relational Output Generation
 5. **CSV Table Creation**
    - Generate all relational tables using trade_id links
-   - Create FEDEFL-based flow.csv
+   - Create FEDEFL-based flow.csv (for reviewing only, not adding Flow ID to other table, using factor_id instead)
    - Output comprehensive state and industry impact tables
    - Ensure data consistency across all tables
 
-## Output Structure Enhancement
+## tructure
 
 ```
 year/[year]/
-├── US/
-│   ├── domestic/
-│   │   ├── trade.csv                    # Base trade flows
-│   │   ├── trade_factor.csv             # Environmental coefficients
-│   │   ├── bea_trade_detail.csv        # BEA-enhanced trade details
-│   │   ├── state_trade_flows.csv       # State-level flows  
-│   │   ├── trade_factor_bea.csv        # BEA-specific coefficients
-│   │   └── state_industry_impacts.csv  # State economic impacts
-│   ├── imports/
-│   │   ├── trade.csv
-│   │   ├── trade_factor.csv             # Environmental coefficients
-│   │   ├── bea_trade_detail.csv
-│   │   ├── import_dependency.csv       # Import analysis
-│   │   ├── trade_price_indices.csv     # Economic indicators
-│   │   └── trade_factor_bea.csv
-│   └── exports/
-│       ├── trade.csv  
-│       ├── trade_factor.csv             # Environmental coefficients
-│       ├── bea_trade_detail.csv
-│       ├── export_competitiveness.csv  # Export analysis
-│       ├── state_trade_flows.csv
-│       └── trade_factor_bea.csv
-├── industry.csv                         # Enhanced industry mapping
-├── factor.csv                           # Base environmental factors
-├── flow.csv                            # FEDEFL flow details
-├── industry.csv                         # Industry mapping (from parent directory)
-└── reference/
-    ├── state_codes.csv                 # State reference data
-    ├── naics_mapping.csv              # NAICS concordance  
-    └── bea_sectors.csv                # BEA sector definitions
+└── US/
+    ├── domestic/
+    │   ├── trade.csv                     # Base trade flows (pre-exists)
+    │   ├── trade_factor.csv              # Environmental coefficients (pre-exists)
+    │   ├── interstate.csv                # State-to-state tradeflow (includes state to itself)
+    │   ├── interstate_factor.csv         # State-to-state factor (flow) level 
+    │   └── state_industry_impacts.csv    # State economic impacts
+    ├── factor.csv                        # Base environmental factors
+    ├── flow.csv                          # FEDEFL flow details
+    ├── industry.csv                      # Industry mapping (from parent directory)
 ```
 
 ## Key Innovations
 
 ### 1. Enhanced Relational Structure
-- All tables link via trade_id for comprehensive analysis
-- State-level disaggregation maintains trade_id relationships
-- Multiple data sources integrated through common identifiers
-
-### 2. Comprehensive Coverage  
-- **Domestic**: Intra-US state-to-state trade flows with employment impacts
-- **Imports**: Dependency analysis, alternative supplier assessment, price impacts
-- **Exports**: Competitiveness analysis, state export specializations, market opportunities
-
-### 3. Policy-Relevant Analytics
-- Trade balance implications by state and industry
-- Supply chain vulnerability assessments  
-- Economic impact multipliers for policy analysis
-- Export competitiveness and market share analysis
+- State tables link via interstate_id for comprehensive analysis, including folder size comparisons
+- State-level disaggregation maintains interstate_id relationships (separate from trade_id for now)
 
 ## Data Quality and Validation
 
-### 1. Cross-Source Reconciliation
+### 1. Cross-Source Reconciliation (on hold until we have in SQL)
 - Compare Exiobase and BEA trade values for consistency
 - Flag significant discrepancies for manual review
 - Apply scaling factors where appropriate
@@ -245,39 +285,28 @@ year/[year]/
 - Validate employment multipliers against BEA benchmarks
 - Cross-check industry classifications
 
-### 3. FEDEFL Integration Quality
+### 3. FEDEFL Integration Quality (Not doing currently since not using UUIDs)
 - Verify Flow UUID mapping completeness
 - Ensure environmental flow consistency
 - Validate units and contexts
 
-## Performance Considerations
-
-### 1. API Rate Limiting
-- Implement intelligent caching for BEA API calls
-- Batch requests efficiently to minimize API calls
-- Store intermediate results for debugging and reprocessing
-
-### 2. Memory Management  
-- Process large datasets in chunks (following existing patterns)
-- Use efficient pandas operations for matrix manipulations
-- Implement garbage collection for large temporary objects
-
-### 3. Scalability
-- Design for easy extension to other years
-- Enable selective processing of specific tradeflows
+### 4. Scalability
+- Designed for easy extension to other years
+- Enables selective processing of specific tradeflows
 - Support incremental updates and data refreshes
 
-This specification creates a comprehensive framework that leverages existing Exiobase processing capabilities while adding substantial BEA API integration and state-level analytical capabilities. The relational design ensures data consistency and enables complex multi-dimensional analysis of US trade flows.
+This specification creates a comprehensive framework that leverages existing Exiobase pre-processing while adding substantial BEA API integration and state-level analytical capabilities. The relational design ensures data consistency and enables complex multi-dimensional analysis of trade flows.
 
 
 
-# About Trade-Data Repo
+# Trade-Data Repo
 
+Output is deployed in our [trade-data repo](https://github.com/ModelEarth/trade-data) to keep local folders small.
 
 [Intro](https://model.earth/profile/trade/) - output sent to [modelearth/trade-data](https://github.com/ModelEarth/trade-data/tree/main/year/2019/US)
 trade-data repo receives from python in [exiobase/tradeflow](https://model.earth/exiobase/tradeflow/) and [exiobase/tradeflow/bea](https://model.earth/exiobase/tradeflow/bea/) 
 
-This [EPA download page](https://catalog.data.gov/dataset/useeio-models-with-import-emission-factors-for-greenhouse-gases-for-2017-2022-from-exiobas) is helpful for clarifying the difference between commodities, BEA service categories and sectors. (3 crosswalk files from that page were added to the concordance folder here.)
+This [EPA download page](https://catalog.data.gov/dataset/useeio-models-with-import-emission-factors-for-greenhouse-gases-for-2017-2022-from-exiobas) is helpful for clarifying the difference between commodities, BEA service categories and sectors. (3 crosswalk files from that page were added to our [trade-data/concordance](https://github.com/ModelEarth/trade-data/tree/main/concordance) folder.)
 
 The EPA page provides these crosswalks:  
 (1) EXIOBASE commodities to USEEIO commodities.  
@@ -288,9 +317,9 @@ The differences between "CEDA Sector" and the new USEEIO_Detail 2017 sector are 
 "CEDA Sector" and "USEEIO_Detail 2012" both correspond to NAICS 2012. 
 Whereas USEEIO_Detail 2017 split Aluminum into 2 categories and combined 4 Appliance categories. (See notes below)
 
-**Conclusions:**
+**NOTES**
 
-CEDA is too limited for us to use here since it only provides emission data, and doesn't convey the 2017 NAICS splits and merges done by the US EPA for USEEIO2.
+CEDA only provides emission data, and doesn't convey the 2017 NAICS splits and merges done by the US EPA for USEEIO2.
 
 We don't use industry_id for the USEEIO or BEA values since neither refer to their data as Industry. (Though it is NAICS industry categories with minor modifications.)
 
@@ -304,8 +333,6 @@ https://model.earth/exiobase/tradeflow/bea/
 
 You could focus on running our bea scripts above to create .csv files so we can review before SQL tables are created, and also add the crosswalks from the first link above to our trade-data repo.
 
-
-**NOTES**. 
 CEDA still uses NAICS 2012:
 
 [This ceda_to_useeio_commodity concordance](https://pasteur.epa.gov/uploads/10.23719/1531906/documents/ceda_to_useeio_commodity_concordance.csv) provides the 2012, CEDA Sector, and 2017
