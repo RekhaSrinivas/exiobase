@@ -79,8 +79,8 @@ trade_id, year, region1, region2, industry1, industry2, amount
 Originates in our [international pull (from Exiobase)](../)
 
 TO DO
-Add a note here on how the BEA data pull makes use of the international "trade" table in domestic.
-Is it used for the total intra-US tradeflow for each industry?
+Add a note here on whether the BEA data pull makes use of the international "trade" table in domestic.
+The state-to-state "interstate" table is similar to the international "trade" table.
 
 
 #### interstate.csv - Rename from [bea_trade_detail.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/bea_trade_detail.csv)
@@ -92,7 +92,8 @@ trade_id, year, region1 (US-AK), region2 (US-GA), industry1, industry2, amount,
 bea_commodity_code, bea_industry_code, economic_multiplier
 
 TO DOs
-Rename bea_trade_detail.csv to "interstate"
+Rename bea_trade_detail.csv to "interstate" in the us-bea.py python.
+Use the region naming format: [country]-[state] for the interstate.csv output.
 
 TO DO - Remove "bea_" from these column names and explain use here:
 bea_commodity_code
