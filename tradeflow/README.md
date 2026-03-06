@@ -12,15 +12,26 @@ Later, the 6-character "commodity" sectors can reside in the 5-character "trade"
 
 Combing state-to-state consumption: [Exiobase plus BEA](bea) based on the [USEEIO repo](https://github.com/USEPA/USEEIO/tree/master/import_emission_factors)
 
-## Processing Command
+## Processing
 
-To generate CSV file output configured in config.yaml, run the automated batch processing for [our related project](https://github.com/ModelEarth/projects/issues/30):
+Set a year and country in the config.yaml file and run:
 
 ```bash
 python main.py
 ```
 
+Get US Interstate Data (uses the sname config.yaml file) - [Details](bea)
+
+```bash
+python bea/main.py
+```
+
+Lastly, [Send CSV into SQL database](https://github.com/ModelEarth/projects/issues/30):
+
+
 ## Processing Times
+
+Does not include interstate bea/main.py processing
 
 | config.yaml | trade.py | trade_impact.py | trade_resource.py |
 |--------------|----------|----------------|-------------------|
