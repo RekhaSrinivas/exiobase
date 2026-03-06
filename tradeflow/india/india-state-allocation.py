@@ -10,11 +10,12 @@ Allocates national trade flows and economic data to Indian states/UTs using:
 - GSDP_Current_2011-12_State_wise for scaling
 
 Usage:
-    python india-state-allocation.py
-    python india-state-allocation.py --data-dir ../India_data
-    python india-state-allocation.py --year 2019
+    python india/india-state-allocation.py
+    python india/india-state-allocation.py --data-dir ../India_data
+    python india/india-state-allocation.py --year 2019
 """
 
+import sys
 import pandas as pd
 import numpy as np
 import argparse
@@ -23,6 +24,9 @@ from pathlib import Path
 from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
+
+# Allow imports from parent tradeflow directory (config_loader, etc.)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Try to import openpyxl for Excel support
 try:
@@ -48,8 +52,8 @@ class IndiaStateAllocator:
         if data_dir:
             self.data_dir = Path(data_dir)
         else:
-            # Default to India_data folder in project root
-            self.data_dir = Path(__file__).parent.parent / 'India_data'
+            # Default to India_data folder in exiobase/ root
+            self.data_dir = Path(__file__).parent.parent.parent / 'India_data'
         
         if not self.data_dir.exists():
             raise FileNotFoundError(
@@ -1462,7 +1466,7 @@ class IndiaStateAllocator:
         
         if output_dir is None:
     # Save inside: webroot/trade-data/year/2023/IN/domestic
-            project_root = Path(__file__).resolve().parents[2]  # /webroot
+            project_root = Path(__file__).resolve().parents[3]  # /webroot
             output_dir = (
                 project_root /
                 "trade-data" /

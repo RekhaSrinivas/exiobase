@@ -6,13 +6,14 @@ Extends ExiobaseTradeFlow with BEA API integration for comprehensive US trade an
 Now includes file existence checking to avoid regenerating existing trade.csv files.
 
 Usage:
-    python us-bea.py --bea-key YOUR_API_KEY
-    python us-bea.py  # Uses BEA_API_KEY from webroot .env file
-    python us-bea.py --force-regen  # Force regeneration even if files exist
+    python bea/main.py --bea-key YOUR_API_KEY
+    python bea/main.py  # Uses BEA_API_KEY from webroot .env file
+    python bea/main.py --force-regen  # Force regeneration even if files exist
 
 Optimization: Checks for existing trade.csv files before regenerating them.
 """
 
+import sys
 import pandas as pd
 import numpy as np
 import time
@@ -22,13 +23,16 @@ from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 
+# Allow imports from parent tradeflow directory (config_loader, trade, etc.)
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 # Import existing modules
 from config_loader import load_config, get_file_path, get_reference_file_path
 
 # Import US-BEA specialized modules
-from us_bea_api_client import BEAAPIClient
-from us_state_trade_analyzer import StateTradeAnalyzer
-from us_fedefl_integration import FEDEFLIntegrator
+from main_api_client import BEAAPIClient
+from main_trade_analyzer import StateTradeAnalyzer
+from main_fedefl_integration import FEDEFLIntegrator
 
 class USBEATradeFlow:
     def __init__(self, bea_api_key=None, force_regeneration=False):
@@ -205,7 +209,7 @@ class USBEATradeFlow:
             self._fetch_bea_domestic_data()
             
         # Create US-BEA trade detail enhancement
-        self._create_bea_trade_detail()
+        self._create_interstate_csvfiles()
         
     def _fetch_bea_imports_data(self):
         """Fetch BEA imports data from API"""
@@ -280,7 +284,7 @@ class USBEATradeFlow:
             self.bea_domestic_data = pd.DataFrame()
             self.validation_issues.append(f"US-BEA domestic API error: {e}")
     
-    def _create_bea_trade_detail(self):
+    def _create_interstate_csvfiles(self):
         """Create enhanced trade detail with US-BEA data integration"""
         print("  📝 Creating US-BEA trade detail integration...")
         
@@ -311,9 +315,10 @@ class USBEATradeFlow:
                 enhanced_detail = self._merge_bea_domestic(enhanced_detail)
             
             # Save enhanced detail
-            output_file = trade_file.parent / 'bea_trade_detail.csv'
+            output_file = trade_file.parent / 'interstate.csv'
+            output_file.parent.mkdir(parents=True, exist_ok=True)
             enhanced_detail.to_csv(output_file, index=False)
-            print(f"    ✅ Created BEA trade detail: {output_file}")
+            print(f"    ✅ Created interstate.csv: {output_file}")
             
         except Exception as e:
             print(f"    ❌ Error creating BEA trade detail: {e}")
@@ -326,8 +331,8 @@ class USBEATradeFlow:
         enhanced = base_trade.copy()
         
         # Add US-BEA-specific columns
-        enhanced['bea_commodity_code'] = ''
-        enhanced['bea_industry_code'] = ''
+        enhanced['commodity_code'] = ''
+        enhanced['industry_code'] = ''
         enhanced['trade_balance'] = 0.0
         enhanced['import_value'] = enhanced['amount']
         enhanced['export_value'] = 0.0
@@ -339,8 +344,8 @@ class USBEATradeFlow:
         enhanced = base_trade.copy()
         
         # Add US-BEA-specific columns
-        enhanced['bea_commodity_code'] = ''
-        enhanced['bea_industry_code'] = ''
+        enhanced['commodity_code'] = ''
+        enhanced['industry_code'] = ''
         enhanced['trade_balance'] = enhanced['amount']
         enhanced['import_value'] = 0.0
         enhanced['export_value'] = enhanced['amount']
@@ -352,8 +357,8 @@ class USBEATradeFlow:
         enhanced = base_trade.copy()
         
         # Add domestic-specific columns
-        enhanced['bea_commodity_code'] = ''
-        enhanced['bea_industry_code'] = ''
+        enhanced['commodity_code'] = ''
+        enhanced['industry_code'] = ''
         enhanced['economic_multiplier'] = 1.0
         
         return enhanced
@@ -385,7 +390,10 @@ class USBEATradeFlow:
                 
                 # Save results
                 output_path = trade_file.parent
-                state_flows.to_csv(output_path / 'state_trade_flows.csv', index=False)
+                output_path.mkdir(parents=True, exist_ok=True)
+                internal_cols = ['_origin_state', '_destination_state']
+                state_flows.drop(columns=[c for c in internal_cols if c in state_flows.columns], inplace=True)
+                state_flows.to_csv(output_path / 'interstate_factor.csv', index=False)
                 state_impacts.to_csv(output_path / 'state_industry_impacts.csv', index=False)
                 
                 print(f"    Created US state domestic flow analysis")
@@ -421,6 +429,7 @@ class USBEATradeFlow:
                 
                 # Save results
                 output_path = trade_file.parent
+                output_path.mkdir(parents=True, exist_ok=True)
                 competitiveness.to_csv(output_path / 'export_competitiveness.csv', index=False)
                 
                 print(f"    Created US export competitiveness analysis")
@@ -456,6 +465,7 @@ class USBEATradeFlow:
                 
                 # Save results
                 output_path = trade_file.parent
+                output_path.mkdir(parents=True, exist_ok=True)
                 dependency.to_csv(output_path / 'import_dependency.csv', index=False)
                 
                 print(f"    Created US import dependency analysis")
@@ -501,7 +511,8 @@ class USBEATradeFlow:
         try:
             trade_file_str = get_file_path(self.config, 'industryflow')
             output_path = Path(trade_file_str).parent
-            
+            output_path.mkdir(parents=True, exist_ok=True)
+
             # Create US trade price indices table
             self._create_trade_price_indices(output_path)
             
@@ -582,8 +593,8 @@ class USBEATradeFlow:
             f.write(f"\n## BEA Enhanced Output Files Generated\n\n")
             f.write(f"### Enhanced Relational Tables\n")
             f.write(f"- `trade.csv` - Base trade flows\n")
-            f.write(f"- `bea_trade_detail.csv` - BEA-enhanced trade details\n")
-            f.write(f"- `state_trade_flows.csv` - State-level trade flows\n")
+            f.write(f"- `interstate.csv` - State-to-state trade details\n")
+            f.write(f"- `interstate_factor.csv` - State-level trade flows\n")
             f.write(f"- `export_competitiveness.csv` - Export competitiveness analysis\n")
             f.write(f"- `import_dependency.csv` - Import dependency analysis\n")
             f.write(f"- `flow.csv` - FEDEFL flow details\n")

@@ -144,15 +144,18 @@ class StateTradeAnalyzer:
                     
                     if flow_share > 0:
                         flow_value = total_value * flow_share
-                        
+                        interstate_id = f"{self.year}-US-{origin_state}-US-{dest_state}-{industry}"
+
                         flows.append({
+                            'interstate_id': interstate_id,
                             'trade_id': trade_row.get('trade_id', ''),
-                            'origin_state': origin_state,
-                            'destination_state': dest_state,
                             'state_industry_code': industry,
                             'flow_value': flow_value,
                             'flow_type': 'inter_state',
-                            'employment_impact': 0  # Will be calculated later
+                            'employment_impact': 0,  # Will be calculated later
+                            # Internal only — dropped before interstate_factor.csv is written
+                            '_origin_state': origin_state,
+                            '_destination_state': dest_state,
                         })
         
         return flows
@@ -261,8 +264,8 @@ class StateTradeAnalyzer:
         
         print("    📊 Calculating state industry impacts...")
         
-        # Aggregate flows by state and industry
-        state_industry_agg = state_flows_df.groupby(['destination_state', 'state_industry_code']).agg({
+        # Aggregate flows by destination state and industry
+        state_industry_agg = state_flows_df.groupby(['_destination_state', 'state_industry_code']).agg({
             'flow_value': 'sum',
             'employment_impact': 'sum'
         }).reset_index()
@@ -270,7 +273,7 @@ class StateTradeAnalyzer:
         impacts = []
         
         for _, row in state_industry_agg.iterrows():
-            state = row['destination_state']
+            state = row['_destination_state']
             industry = row['state_industry_code']
             flow_value = row['flow_value']
             direct_jobs = row['employment_impact']
@@ -288,7 +291,7 @@ class StateTradeAnalyzer:
             tax_revenue_impact = total_output_impact * self.tax_revenue_rate
             
             impacts.append({
-                'state_code': state,
+                'region': f'US-{state}',
                 'industry_code': industry,
                 'direct_jobs': direct_jobs,
                 'indirect_jobs': indirect_jobs, 
@@ -465,7 +468,8 @@ class StateTradeAnalyzer:
     def create_state_reference_data(self, output_path):
         """Create state reference data files"""
         print("  📋 Creating state reference data...")
-        
+        output_path.mkdir(parents=True, exist_ok=True)
+
         # Save state codes
         self.state_codes.to_csv(output_path / 'state_codes.csv', index=False)
         
