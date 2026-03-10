@@ -4,7 +4,7 @@ The following provides guidance to Claude Code (claude.ai/code) when working wit
 
 ## Project Overview
 
-This is an Exiobase data processing project that extracts and transforms multiregional input-output (MRIO) data for economic and environmental analysis. The project processes trade flows, industry factors, and environmental impacts from the ModelEarth Industry Database.
+This is an Exiobase data processing project that extracts and transforms multiregional input-output (MRIO) data for economic and environmental analysis. The project processes trade flows, industry factors, and environmental impacts from the Industry Database.
 
 ## Architecture
 
