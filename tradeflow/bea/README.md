@@ -7,7 +7,7 @@ The US-BEA data integration here combines Exiobase MRIO data with US Bureau of E
 The following US BEA integration with Exiobase international trade flow data uses the [industry.csv file](https://github.com/ModelEarth/trade-data/blob/main/year/2019/industry.csv) from the separate Exiobase pull of US domestic commodity flow. Industry columns are: industry_id and name (the exiobase sector information).
 
 ### Reports
-- [Sample Report from Output](../../trade-data/bea-dashboard/)
+- [Sample Report from Output](../../../trade-data/bea-dashboard/)
 - State-to-state domestic trade flows (upcoming)
 - State export competitiveness analysis (upcoming)
 - Import dependency by state (upcoming)
@@ -121,7 +121,7 @@ Open question (tracked in [PLAN.md](PLAN.md)): where is the file above?
 Similar to [trade_factor.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/US/domestic/trade_factor.csv)
 
 Planned follow-up (tracked in [PLAN.md](PLAN.md)):
-When CSV file and column names are changed above, update [Sample Report from Output](../../trade-data/bea-dashboard/).
+When CSV file and column names are changed above, update [Sample Report from Output](../../../trade-data/bea-dashboard/).
 
 
 #### [flow.csv](https://github.com/ModelEarth/trade-data/blob/main/year/2019/flow.csv) (FEDEFL Integration)
