@@ -75,7 +75,10 @@ class ExiobaseTradeFlow:
         # Set up paths for Exiobase data storage
         self.model_path = Path(__file__).parent / 'exiobase_data'
         self.model_path.mkdir(exist_ok=True)
-        
+
+        # Ensure the Exiobase zip is downloaded before sector mapping needs it
+        self._ensure_exiobase_file()
+
         # Load or create sector mapping
         self.sector_mapping = self.load_sector_mapping()
         
@@ -87,7 +90,7 @@ class ExiobaseTradeFlow:
         Load the sector mapping from industry.csv or create it if it doesn't exist
         """
         industries_file = get_reference_file_path(self.config, 'industries')
-        
+
         if Path(industries_file).exists():
             print("Loading existing sector mapping from industry.csv")
             mapping_df = pd.read_csv(industries_file)
@@ -98,6 +101,9 @@ class ExiobaseTradeFlow:
             # Run the sector mapping creation
             from create_sector_mapping import create_sector_mapping
             mapping_df = create_sector_mapping()
+            if mapping_df is None:
+                print("Warning: Could not create sector mapping (Exiobase zip unavailable). Using empty mapping.")
+                return {}
             return dict(zip(mapping_df['name'], mapping_df['industry_id']))
 
     def create_factors_export(self):
@@ -403,53 +409,119 @@ class ExiobaseTradeFlow:
         except Exception as e:
             print(f"Error creating fallback trade_factor.csv: {e}")
 
-    def download_and_process_exiobase(self):
+    def _download_direct(self, year):
         """
-        Download and process Exiobase data using pymrio library
+        Direct download from Zenodo using the current API URL format.
+        pymrio's built-in downloader uses a regex that no longer matches Zenodo's URLs
+        (Zenodo changed from /records/ID/files/NAME.zip to
+        /api/records/ID/files/NAME.zip/content), so this method bypasses it.
         """
-        print(f"Downloading Exiobase data for {self.year}...")
-        
-        # Check if Exiobase data already exists
+        import requests
+
+        filename = f"IOT_{year}_{self.model_type}.zip"
+        dest = self.model_path / filename
+
+        # Resolve the DOI to get the current Zenodo record ID
+        doi_url = "https://doi.org/10.5281/zenodo.3583070"
+        print(f"Resolving Zenodo DOI to find current record ID...")
+        r = requests.get(doi_url, allow_redirects=True, timeout=30)
+        record_id = r.url.rstrip('/').split('/')[-1]
+        if not record_id.isdigit():
+            raise RuntimeError(f"Could not extract Zenodo record ID from URL: {r.url}")
+
+        download_url = f"https://zenodo.org/api/records/{record_id}/files/{filename}/content"
+        print(f"Downloading {filename} from Zenodo record {record_id}...")
+        print(f"URL: {download_url}")
+        print("(This may take several minutes - file is ~4GB)")
+
+        with requests.get(download_url, stream=True, timeout=3600) as r:
+            r.raise_for_status()
+            total = int(r.headers.get('content-length', 0))
+            downloaded = 0
+            with open(dest, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):  # 1 MB chunks
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total:
+                        pct = downloaded / total * 100
+                        print(f"\r  Progress: {pct:.1f}% ({downloaded/1e9:.2f}/{total/1e9:.2f} GB)",
+                              end='', flush=True)
+        print()
+        print(f"Successfully downloaded {filename}")
+        return dest
+
+    def _ensure_exiobase_file(self):
+        """
+        Ensure the Exiobase zip is present, downloading it if needed.
+        Sets self.year to the fallback year if the requested year is unavailable.
+        Returns the Path to the zip, or None if only simulated fallback data can be used.
+        """
         exio_file = self.model_path / f'IOT_{self.year}_{self.model_type}.zip'
         if exio_file.exists():
             print(f"Found existing Exiobase file: {exio_file}")
-        else:
-            # Download Exiobase data for the specified year
-            try:
-                print(f"Downloading Exiobase data for {self.year}... (this may take several minutes)")
-                pymrio.download_exiobase3(
-                    storage_folder=self.model_path,
-                    system=self.model_type,
-                    years=[self.year]
+            return exio_file
+
+        # Try pymrio downloader first, then fall back to direct download.
+        # pymrio's regex (expecting /records/ID/files/NAME.zip) no longer matches
+        # Zenodo's current URL format (/api/records/ID/files/NAME.zip/content), so
+        # it silently succeeds without downloading anything.
+        try:
+            print(f"Downloading Exiobase {self.year} data via pymrio...")
+            pymrio.download_exiobase3(
+                storage_folder=self.model_path,
+                system=self.model_type,
+                years=[self.year]
+            )
+            if not exio_file.exists():
+                raise RuntimeError(
+                    f"pymrio.download_exiobase3 completed without error but did not create "
+                    f"{exio_file.name}. pymrio's URL regex no longer matches Zenodo's current "
+                    f"API format (/api/records/ID/files/NAME.zip/content). Trying direct download."
                 )
-                print(f"Successfully downloaded Exiobase {self.year} data")
-            except Exception as e:
-                print(f"Download failed for {self.year}: {e}")
-                # Only fallback to a prior year that doesn't yet have downloaded data
-                # If the year prior to the missing year already has a download, then exit the process
-                fallback_year = self.year - 1
-                fallback_file = self.model_path / f'IOT_{fallback_year}_{self.model_type}.zip'
-                
-                if fallback_file.exists():
-                    print(f"Prior year {fallback_year} already has downloaded data, preventing rerun. Exiting process.")
-                    print("Please manually download the requested year or use an available year.")
-                    exit(1)
-                else:
-                    print(f"Trying to download prior year {fallback_year}...")
-                    try:
-                        pymrio.download_exiobase3(
-                            storage_folder=self.model_path,
-                            system=self.model_type,
-                            years=[fallback_year]
-                        )
-                        print(f"Successfully downloaded Exiobase {fallback_year} data")
-                        self.year = fallback_year
-                        exio_file = fallback_file
-                    except Exception as fallback_e:
-                        print(f"Fallback download failed for {fallback_year}: {fallback_e}")
-                        print("Using fallback method with simulated data...")
-                        return self.load_fallback_data()
-        
+            print(f"Successfully downloaded Exiobase {self.year} data")
+            return exio_file
+        except Exception as e:
+            print(f"pymrio download issue: {e}")
+
+        # Direct download using current Zenodo API URL format
+        try:
+            self._download_direct(self.year)
+            return exio_file
+        except Exception as direct_e:
+            print(f"Direct download failed for {self.year}: {direct_e}")
+
+        # Only fallback to a prior year that doesn't yet have downloaded data.
+        # If the prior year already has a download, exit to prevent accidental reuse.
+        fallback_year = self.year - 1
+        fallback_file = self.model_path / f'IOT_{fallback_year}_{self.model_type}.zip'
+
+        if fallback_file.exists():
+            print(f"Prior year {fallback_year} already has downloaded data, preventing rerun. Exiting process.")
+            print("Please manually download the requested year or use an available year.")
+            exit(1)
+
+        print(f"Trying to download prior year {fallback_year}...")
+        try:
+            self._download_direct(fallback_year)
+            print(f"Successfully downloaded Exiobase {fallback_year} data")
+            self.year = fallback_year
+            return fallback_file
+        except Exception as fallback_e:
+            print(f"Fallback download failed for {fallback_year}: {fallback_e}")
+            print("Will use simulated fallback data.")
+            return None
+
+    def download_and_process_exiobase(self):
+        """
+        Download (if needed) and parse Exiobase data using pymrio library.
+        """
+        print(f"Loading Exiobase data for {self.year}...")
+
+        exio_file = self._ensure_exiobase_file()
+
+        if exio_file is None:
+            return self.load_fallback_data()
+
         # Parse the downloaded Exiobase data
         try:
             print(f"Parsing Exiobase file: {exio_file}")
