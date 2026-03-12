@@ -186,7 +186,8 @@ def run_country_processing(country, tradeflow, batch_start_time, batch_timeout=1
             result = subprocess.run([
                 sys.executable, script
             ], capture_output=True, text=True, timeout=1200,  # 20 minutes per script
-               cwd=Path(__file__).parent)
+               cwd=Path(__file__).parent,
+               env={**os.environ, 'EXIOBASE_TRADEFLOW': tradeflow, 'EXIOBASE_COUNTRY': country})
             
             script_time = time.time() - script_start
             

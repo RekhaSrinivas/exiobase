@@ -1,8 +1,7 @@
-TRADEFLOW: exports
+TRADEFLOW: domestic,imports,exports
 YEAR: 2020
 COUNTRY:
   list: US
-  current: US
 NODES:
   exiobase:
     source_python: main.py
