@@ -53,7 +53,7 @@ python update_current_country.py CN
 The scripts are run in this specific order to ensure proper data dependencies:
 
 main.py will first download the Exiobase year file. Takes about 10 minutes for a 535 MB file.  
-The raw Exiobase file will be placed exiobase/tradeflow/exiobase_data/
+The raw Exiobase year file will be placed in exiobase/tradeflow/exiobase_data. (Omitted from deployment by .gitignore)  
 
 ### 1. **trade.py** - Primary Data Extraction and Processing
 - **Input**: Exiobase Z-matrix (inter-industry flows) and F-matrices (environmental extensions)
