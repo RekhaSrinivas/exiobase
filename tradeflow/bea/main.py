@@ -62,31 +62,34 @@ class USBEATradeFlow:
             print("Optimization: Will skip existing trade.csv files")
         
     def _load_bea_api_key(self, provided_key):
-        """Load BEA API key from command line, .env file, or environment"""
+        """Load BEA API key from command line, .env files, or environment.
+        Returns None if not found — BEA API calls will fall back to empty DataFrames."""
         if provided_key:
             return provided_key
-            
-        # Try loading from webroot .env file
-        webroot_env = Path(__file__).parents[2] / '.env'
-        if webroot_env.exists():
-            load_dotenv(webroot_env)
-            env_key = os.getenv('BEA_API_KEY')
-            if env_key:
-                print(f"Loaded BEA API key from {webroot_env}")
-                return env_key
-        
+
+        # Search .env files in priority order
+        search_paths = [
+            Path(__file__).parents[2] / 'docker' / '.env',   # webroot/docker/.env
+            Path(__file__).parents[2] / '.env',               # webroot/.env
+        ]
+        for env_path in search_paths:
+            if env_path.exists():
+                load_dotenv(env_path)
+                env_key = os.getenv('BEA_API_KEY')
+                if env_key:
+                    print(f"Loaded BEA API key from {env_path}")
+                    return env_key
+
         # Try system environment
         env_key = os.getenv('BEA_API_KEY')
         if env_key:
             print("Loaded BEA API key from system environment")
             return env_key
-            
-        raise ValueError(
-            "BEA API key not found. Please:\n"
-            "1. Register at https://apps.bea.gov/api/signup/\n"
-            "2. Add BEA_API_KEY=your_key to webroot/.env file\n"
-            "   OR pass --bea-key YOUR_KEY argument"
-        )
+
+        print("BEA API key not found — BEA API enhancement will be skipped.")
+        print("To enable: add BEA_API_KEY=your_key to webroot/docker/.env or webroot/.env")
+        print("Register at https://apps.bea.gov/api/signup/")
+        return None
     
     def process_all_tradeflows(self):
         """Main processing pipeline for enhanced BEA trade analysis"""
@@ -123,6 +126,17 @@ class USBEATradeFlow:
         print(f"\nPhase 1: Checking/generating base {tradeflow} trade data...")
         base_data_exists = self._generate_base_trade_data(tradeflow)
         
+        # Stop early if trade.csv still doesn't exist — nothing useful can be produced
+        original_tradeflow = self.config['TRADEFLOW']
+        self.config['TRADEFLOW'] = tradeflow
+        trade_file = Path(get_file_path(self.config, 'industryflow'))
+        self.config['TRADEFLOW'] = original_tradeflow
+        if not trade_file.exists():
+            print(f"\n⛔ trade.csv not found at {trade_file}")
+            print(f"   Run ~/env/bin/python3 trade.py (with TRADEFLOW={tradeflow}) to generate it first.")
+            print(f"   Stopping — no output files will be created for {tradeflow}.")
+            return
+
         # Phase 2: BEA API data enhancement
         print(f"\nPhase 2: Enhancing with US-BEA API data...")
         self._enhance_with_bea_data(tradeflow)
@@ -152,32 +166,47 @@ class USBEATradeFlow:
         
     def _generate_base_trade_data(self, tradeflow):
         """Generate base trade data with file existence optimization"""
-        
+
         # Update config for current tradeflow to get correct file path
         original_tradeflow = self.config['TRADEFLOW']
         self.config['TRADEFLOW'] = tradeflow
-        
+
         try:
             # Check if trade.csv already exists for this year/country/tradeflow
             trade_file_str = get_file_path(self.config, 'industryflow')
-            trade_file = Path(trade_file_str)  # Convert to Path object
-            
+            trade_file = Path(trade_file_str)
+
             if trade_file.exists() and not self.force_regeneration:
                 file_size = trade_file.stat().st_size / (1024*1024)
                 print(f"    ✅ Found existing trade.csv for {self.config['YEAR']}/{self.config['COUNTRY']}/{tradeflow}")
                 print(f"    📁 File: {trade_file} ({file_size:.1f} MB)")
                 print(f"    ⏭️ Skipping regeneration (use --force-regen to override)")
                 return True
-            
+
             # Generate new file
             print(f"    🔄 No existing trade.csv found - generating new file")
             print(f"    🔄 Processing {tradeflow} for {self.config['YEAR']}/{self.config['COUNTRY']}...")
-            
-            # Import and use ExiobaseTradeFlow to generate the base data
-            from trade import ExiobaseTradeFlow
-            processor = ExiobaseTradeFlow()
-            success = processor.run_analysis()
-            
+
+            # Resolve current country string for the env override
+            country_cfg = self.config['COUNTRY']
+            if isinstance(country_cfg, dict):
+                country_str = country_cfg.get('current') or country_cfg.get('list', 'US').split(',')[0].strip()
+            else:
+                country_str = str(country_cfg).split(',')[0].strip()
+
+            # Set environment variable overrides so ExiobaseTradeFlow() reads the right
+            # single tradeflow/country from config.yaml (config_loader.py honours these).
+            os.environ['EXIOBASE_TRADEFLOW'] = tradeflow
+            os.environ['EXIOBASE_COUNTRY']   = country_str
+
+            try:
+                from trade import ExiobaseTradeFlow
+                processor = ExiobaseTradeFlow()
+                success = processor.run_analysis()
+            finally:
+                os.environ.pop('EXIOBASE_TRADEFLOW', None)
+                os.environ.pop('EXIOBASE_COUNTRY',   None)
+
             if success:
                 if trade_file.exists():
                     file_size = trade_file.stat().st_size / (1024*1024)
@@ -189,12 +218,11 @@ class USBEATradeFlow:
             else:
                 print(f"    ❌ Failed to generate base {tradeflow} trade data")
                 return False
-                
+
         except Exception as e:
             print(f"    ❌ Error in base data generation: {e}")
             return False
         finally:
-            # Restore original config
             self.config['TRADEFLOW'] = original_tradeflow
     
     def _enhance_with_bea_data(self, tradeflow):
@@ -366,19 +394,33 @@ class USBEATradeFlow:
     def _analyze_state_domestic_flows(self):
         """Analyze US state-to-state domestic trade flows"""
         print("  Analyzing US state-to-state flows...")
-        
+
         # Update config for current tradeflow
         original_tradeflow = self.config['TRADEFLOW']
         self.config['TRADEFLOW'] = self.current_tradeflow
-        
+
         try:
             # Load base trade data
             trade_file_str = get_file_path(self.config, 'industryflow')
             trade_file = Path(trade_file_str)
-            
+
             if trade_file.exists():
                 base_trade = pd.read_csv(trade_file)
-                
+
+                # Load Exiobase satellite matrix so factor_id is added to every state-pair row.
+                # The zip lives two directories above bea/ (i.e. tradeflow/exiobase_data/).
+                exiobase_zip = (
+                    Path(__file__).parents[1]
+                    / 'exiobase_data'
+                    / f'IOT_{self.config["YEAR"]}_pxp.zip'
+                )
+                if exiobase_zip.exists():
+                    print("    Loading Exiobase satellite data for factor_id assignment...")
+                    self.state_analyzer.load_exiobase_satellite(exiobase_zip)
+                else:
+                    print(f"    Exiobase zip not found at {exiobase_zip}")
+                    print("    interstate_factor.csv will be generated without factor_id")
+
                 # Use US state analyzer to disaggregate flows
                 bea_data = getattr(self, 'bea_domestic_data', pd.DataFrame())
                 state_flows = self.state_analyzer.disaggregate_domestic_flows(
@@ -391,11 +433,48 @@ class USBEATradeFlow:
                 # Save results
                 output_path = trade_file.parent
                 output_path.mkdir(parents=True, exist_ok=True)
-                internal_cols = ['_origin_state', '_destination_state']
-                state_flows.drop(columns=[c for c in internal_cols if c in state_flows.columns], inplace=True)
-                state_flows.to_csv(output_path / 'interstate_factor.csv', index=False)
+
+                internal_cols = ['_origin_state', '_destination_state', '_industry1']
+                has_satellite = bool(getattr(self.state_analyzer, '_satellite_data', None))
+                use_partial = self.config['PROCESSING'].get('use_partial_factors_interstate', True)
+                partial_limit = self.config['PROCESSING'].get('partial_factor_limit', 120)
+
+                if has_satellite and not use_partial and '_industry1' in state_flows.columns:
+                    # Save full 721-factor file as interstate_factor_lg.csv
+                    lg_file = self.config['FILES'].get('interstate_factor_lg', 'interstate_factor_lg.csv')
+                    lg_df = state_flows.drop(columns=[c for c in internal_cols if c in state_flows.columns])
+                    lg_df.to_csv(output_path / lg_file, index=False)
+                    print(f"    ✅ Created {lg_file} ({len(lg_df)} rows, all factors)")
+
+                if has_satellite and '_industry1' in state_flows.columns:
+                    # Filter to top partial_limit factors per industry (sorted by magnitude in satellite_data)
+                    satellite = self.state_analyzer._satellite_data
+                    lookup_rows = [
+                        {'_industry1': iid, 'factor_id': fid}
+                        for iid, entries in satellite.items()
+                        for fid, _ in entries[:partial_limit]
+                    ]
+                    if lookup_rows:
+                        top_factors_df = pd.DataFrame(lookup_rows)
+                        state_flows_limited = state_flows.merge(
+                            top_factors_df, on=['_industry1', 'factor_id'], how='inner'
+                        )
+                    else:
+                        state_flows_limited = state_flows.copy()
+                    state_flows_limited = state_flows_limited.drop(
+                        columns=[c for c in internal_cols if c in state_flows_limited.columns]
+                    )
+                    state_flows_limited.to_csv(output_path / 'interstate_factor.csv', index=False)
+                    print(f"    ✅ Created interstate_factor.csv ({len(state_flows_limited)} rows, {partial_limit} Selected Factors)")
+                else:
+                    # No satellite data or no _industry1 — write as-is
+                    state_flows_out = state_flows.drop(
+                        columns=[c for c in internal_cols if c in state_flows.columns]
+                    )
+                    state_flows_out.to_csv(output_path / 'interstate_factor.csv', index=False)
+                    print(f"    ✅ Created interstate_factor.csv ({len(state_flows_out)} rows)")
+
                 state_impacts.to_csv(output_path / 'state_industry_impacts.csv', index=False)
-                
                 print(f"    Created US state domestic flow analysis")
             else:
                 print(f"    Base trade file not found: {trade_file}")

@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import json
+import re
 
 class StateTradeAnalyzer:
     def __init__(self, config):
@@ -89,75 +90,203 @@ class StateTradeAnalyzer:
         
         return state_specializations
     
+    def load_exiobase_satellite(self, exiobase_zip_path):
+        """
+        Load Exiobase S matrix (environmental intensity per unit output) for US sectors.
+        Populates self._satellite_data: dict of industry_id -> list of (factor_id, coefficient).
+        Factor IDs are assigned by row position across extensions (same as factors.py).
+        """
+        try:
+            import pymrio
+        except ImportError:
+            print("    pymrio not available — skipping satellite factor loading")
+            self._satellite_data = {}
+            return {}
+
+        exiobase_zip_path = Path(exiobase_zip_path)
+        if not exiobase_zip_path.exists():
+            print(f"    Exiobase zip not found: {exiobase_zip_path} — skipping satellite factor loading")
+            self._satellite_data = {}
+            return {}
+
+        print(f"    Loading Exiobase satellite matrix from {exiobase_zip_path.name}...")
+        exio_model = pymrio.parse_exiobase3(str(exiobase_zip_path)).calc_all()
+
+        # Build stressor → factor_id mapping (same extension order and row order as factors.py)
+        extensions = ['air_emissions', 'employment', 'energy', 'land', 'material', 'water']
+        stressor_to_fid = {}
+        fid = 1
+        for ext_name in extensions:
+            if hasattr(exio_model, ext_name):
+                ext = getattr(exio_model, ext_name)
+                if hasattr(ext, 'F'):
+                    for stressor in ext.F.index.tolist():
+                        stressor_to_fid[stressor] = fid
+                        fid += 1
+
+        # Build sector_name → industry_id mapping (same algorithm as create_sector_mapping.py)
+        sectors = exio_model.Z.index.get_level_values('sector').unique()
+        used_ids = set()
+        sector_to_iid = {}
+        for i, sector in enumerate(sectors):
+            iid = self._make_industry_id(str(sector), i, used_ids)
+            sector_to_iid[str(sector)] = iid
+
+        threshold = self.config.get('PROCESSING', {}).get('min_impact_threshold', 0.001)
+
+        satellite_data = {}  # industry_id → list of (factor_id, coefficient), all factors meeting threshold
+
+        for ext_name in extensions:
+            if hasattr(exio_model, ext_name):
+                ext = getattr(exio_model, ext_name)
+                if not hasattr(ext, 'S'):
+                    continue
+                try:
+                    us_S = ext.S.xs('US', level='region', axis=1)
+                except KeyError:
+                    continue
+
+                for sector in us_S.columns:
+                    iid = sector_to_iid.get(str(sector))
+                    if not iid:
+                        continue
+                    entries = [
+                        (stressor_to_fid[stressor], float(us_S.loc[stressor, sector]))
+                        for stressor in us_S.index
+                        if stressor in stressor_to_fid and abs(float(us_S.loc[stressor, sector])) >= threshold
+                    ]
+                    if entries:
+                        if iid not in satellite_data:
+                            satellite_data[iid] = []
+                        satellite_data[iid].extend(entries)
+
+        # Sort each industry's full factor list globally by magnitude (descending).
+        # This allows callers to slice [:N] to get the top-N selected factors.
+        for iid in satellite_data:
+            satellite_data[iid].sort(key=lambda x: abs(x[1]), reverse=True)
+
+        self._satellite_data = satellite_data
+        print(f"    Satellite data loaded: {len(satellite_data)} US industries with factor coefficients")
+        return satellite_data
+
+    def _make_industry_id(self, sector_str, index, used_ids):
+        """Generate 5-char industry ID from sector name (mirrors create_sector_mapping.py logic)."""
+        clean = re.sub(r'\b(and|of|related|to|services|products|nec|other)\b', '', sector_str, flags=re.IGNORECASE)
+        clean = re.sub(r'[^\w\s]', '', clean).strip()
+        words = clean.split()
+        cid = clean.replace(' ', '')[:5].upper()
+        if len(cid) < 5 and len(words) > 1:
+            acr = ''.join(w[0] for w in words if w)[:3].upper()
+            cid = (acr + clean.replace(' ', '')[len(acr):])[:5].upper()
+        if len(cid) < 5:
+            cid = (cid + str(index).zfill(5 - len(cid)))[:5]
+        orig = cid
+        c = 1
+        while cid in used_ids:
+            cid = (orig[:4] + str(c)) if c < 10 else (orig[:3] + str(c).zfill(2))
+            c += 1
+        used_ids.add(cid)
+        return cid
+
     def disaggregate_domestic_flows(self, base_trade_df, bea_state_data=None):
         """
-        Disaggregate national domestic flows to state-to-state flows
-        
+        Disaggregate national domestic flows to state-to-state flows.
+
+        When self._satellite_data is populated (via load_exiobase_satellite), each
+        state-pair flow is expanded to one row per Exiobase factor, with factor_id
+        and coefficient columns added.  Employment impacts are omitted in that case
+        because employment is already captured as Exiobase factor rows.
+
         Args:
             base_trade_df: Base trade DataFrame with domestic flows
             bea_state_data: Optional BEA state-level data for enhancement
-        
+
         Returns:
             DataFrame with state-level domestic trade flows
         """
         print("    🗺️ Disaggregating domestic flows to state level...")
-        
+
         state_flows = []
-        
+
         for _, trade_row in base_trade_df.iterrows():
-            # Get state disaggregation for this trade flow
             state_disagg = self._disaggregate_single_flow(trade_row, bea_state_data)
             state_flows.extend(state_disagg)
-        
+
         state_df = pd.DataFrame(state_flows)
-        
-        # Calculate employment impacts
-        if not state_df.empty:
+
+        # Employment impacts are calculated only when satellite factor data is absent;
+        # when factor_id rows are present, employment is already encoded as Exiobase factors.
+        has_satellite = bool(getattr(self, '_satellite_data', None))
+        if not state_df.empty and not has_satellite:
             state_df = self._calculate_employment_impacts(state_df)
-        
+
         print(f"      ✅ Created {len(state_df)} state-to-state flow records")
         return state_df
     
     def _disaggregate_single_flow(self, trade_row, bea_data=None):
-        """Disaggregate a single trade flow to state level"""
+        """Disaggregate a single trade flow to state level.
+
+        When self._satellite_data is populated, emits one row per (state-pair, factor_id)
+        using Exiobase S-matrix coefficients for the trade row's industry1 sector.
+        Otherwise emits one aggregate row per state-pair.
+        """
         flows = []
-        
-        # Get industry category for specialization lookup
+
+        # Broad industry category used for state allocation weights
         industry = self._categorize_industry(trade_row.get('industry1', ''))
-        
-        # Get relevant states for this industry
         producing_states = self._get_producing_states(industry)
         consuming_states = self._get_consuming_states(industry)
-        
-        # Total flow value to distribute
         total_value = float(trade_row.get('amount', 0))
-        
-        # Distribute flow across state pairs
+
+        # Satellite factor data keyed by the actual Exiobase industry_id (5-char)
+        satellite = getattr(self, '_satellite_data', None)
+        industry_id = str(trade_row.get('industry1', ''))
+        factor_entries = satellite.get(industry_id, []) if satellite else []
+
         for origin_state in producing_states:
             for dest_state in consuming_states:
-                if origin_state != dest_state:  # Inter-state only
-                    
-                    # Calculate flow share based on production/consumption patterns
-                    flow_share = self._calculate_state_flow_share(
-                        origin_state, dest_state, industry, bea_data
-                    )
-                    
-                    if flow_share > 0:
-                        flow_value = total_value * flow_share
-                        interstate_id = f"{self.year}-US-{origin_state}-US-{dest_state}-{industry}"
+                if origin_state == dest_state:
+                    continue
 
+                flow_share = self._calculate_state_flow_share(
+                    origin_state, dest_state, industry, bea_data
+                )
+                if flow_share <= 0:
+                    continue
+
+                flow_value = total_value * flow_share
+                interstate_id = f"{self.year}-US-{origin_state}-US-{dest_state}-{industry}"
+
+                if factor_entries:
+                    # Expand to one row per Exiobase factor
+                    for fid, coeff in factor_entries:
                         flows.append({
                             'interstate_id': interstate_id,
                             'trade_id': trade_row.get('trade_id', ''),
+                            'factor_id': fid,
+                            'coefficient': coeff,
                             'state_industry_code': industry,
                             'flow_value': flow_value,
                             'flow_type': 'inter_state',
-                            'employment_impact': 0,  # Will be calculated later
-                            # Internal only — dropped before interstate_factor.csv is written
+                            'employment_impact': 0,
+                            # Internal only — dropped before CSV write
                             '_origin_state': origin_state,
                             '_destination_state': dest_state,
+                            '_industry1': industry_id,
                         })
-        
+                else:
+                    # Aggregate row (no satellite data for this industry / satellite not loaded)
+                    flows.append({
+                        'interstate_id': interstate_id,
+                        'trade_id': trade_row.get('trade_id', ''),
+                        'state_industry_code': industry,
+                        'flow_value': flow_value,
+                        'flow_type': 'inter_state',
+                        'employment_impact': 0,
+                        '_origin_state': origin_state,
+                        '_destination_state': dest_state,
+                    })
+
         return flows
     
     def _categorize_industry(self, industry_code):

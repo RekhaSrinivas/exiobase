@@ -47,12 +47,18 @@ Does not include interstate bea/main.py processing
 
 The main.py command generates the following CSV files for each country/tradeflow combination:
 - `factor.csv` - Environmental factor definitions (721 factors)
-- `industry.csv` - Industry sector mapping  
+- `industry.csv` - Industry sector mapping
 - `trade.csv` - Core trade flows (trade_id, year, region1, region2, industry1, industry2, amount)
-- `trade_factor.csv` - Environmental coefficients (120 selected factors for imports/exports)
+- `trade_factor.csv` - Environmental coefficients (120 Selected Factors for imports/exports)
 - `trade_factor_lg.csv` - All environmental coefficients (721 factors for domestic flows)
 - `trade_impact.csv` - Aggregated environmental impacts
 - `trade_resource.csv` - Resource use analysis
-- `trade_material.csv` - Material flow analysis  
+- `trade_material.csv` - Material flow analysis
 - `trade_employment.csv` - Employment impact analysis
+
+**120 Selected Factors:** Since each trade flow row gets one row per factor, the row count scales linearly — 120 factors produces 16.6% as many rows as 721 factors (120 / 721 = 16.6%). The top 120 are selected per industry from 721 total Exiobase stressors (air emissions, employment, energy, land, material, water extensions) by ranking all stressors whose absolute S-matrix coefficient meets `min_impact_threshold` (0.001) in descending order and keeping the first `partial_factor_limit` (120). `trade_factor_lg.csv` retains all 721 factors and is generated for domestic flows where the larger file is manageable.
+
+The bea/main.py command generates the following CSV files for US domestic flows:
+- `interstate_factor.csv` — state-to-state flows with `factor_id` + `coefficient` (120 Selected Factors, same selection method as `trade_factor.csv`)
+- `interstate_factor_lg.csv` — same with all 721 factors (set `use_partial_factors_interstate: false` in config.yaml)
 

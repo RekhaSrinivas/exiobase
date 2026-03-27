@@ -24,6 +24,31 @@
 
 ## Investigation Tasks
 
+- [x] **Add `factor_id` to `interstate_factor.csv`** — to relate state-level flows to the `factor` table.
+
+  **Current state (confirmed from live data):**
+  - `state_trade_flows.csv` has 817,684 rows across 21,518 unique `trade_id` values and only 38 unique state pairs.
+  - It produces a **single aggregate `flow_value`** per (trade_id, origin_state, destination_state) — the geographic disaggregation of the domestic trade `amount`, not a per-factor environmental impact.
+  - It has no `factor_id` column. `employment_impact` is a derived BEA scalar, not mapped to a specific Exiobase factor.
+
+  **Limitations preventing a direct add:**
+
+  1. **Source data has no factor dimension.** `flow_value` is the total disaggregated flow (equivalent to `amount` in `trade`). The factor dimension is never applied during state disaggregation in `main_trade_analyzer.py`. To add `factor_id`, the Python generator must loop over factors from `trade_factor.csv` during `_disaggregate_single_flow`, multiplying each state-pair flow by each factor coefficient.
+
+  2. **Scale impact.** The current 817,684 rows × 120 factors (trade_factor.csv) = ~98 million rows. If all 721 factors (trade_factor_lg.csv) are used, ~590 million rows. This is a significant storage and query performance consideration.
+
+  3. **Employment ambiguity.** `employment_impact` uses BEA employment multipliers (from the BEA API), not Exiobase factor coefficients. It does not map directly to any Exiobase `factor_id` (the closest are IDs 419–428: employment people/hours by skill and gender). Mapping it would require choosing which employment factor(s) to link it to.
+
+  4. **`state_industry_code` is currently only `'services'`** — a single placeholder category. Until real industry-level disaggregation is implemented, per-factor rows would all have the same industry context.
+
+  **Path forward (requires Python changes in `main_trade_analyzer.py`):**
+  - In `_disaggregate_single_flow`, after computing the state-pair flow fraction, join with `trade_factor.csv` on `trade_id` and emit one row per `factor_id` with `flow_value * coefficient` as the impact.
+  - Add `factor_id` and (optionally) `coefficient` columns to the output.
+  - Consider a `factor_limit` parameter (default 120) to match the `trade_factor.csv` selection and keep row counts manageable.
+  - The SQL `interstate_factor` table already has a `bigserial` PK and is ready to receive the column once the Python output includes it — no schema change needed beyond adding the FK: `ALTER TABLE interstate_factor ADD COLUMN factor_id INTEGER REFERENCES factor(factor_id)`.
+
+  Done when: `main_trade_analyzer.py` emits `factor_id` in `interstate_factor.csv` output, `README.md` documents the column, and the SQL insert in `team/src/main.rs` (`insert_interstate_factor_rows`) reads the column.
+
 - [ ] **Clarify how `interstate.csv` relates to the international `trade` table**.
   - Both have the same structure; in some SQL installs state data will be merged into `trade`.
   - Determine: does BEA domestic processing read from or write into the international `trade.csv`, or is `interstate.csv` always a separate parallel table?
@@ -59,7 +84,6 @@
 
 > Once resolved, document the answer in `README.md` and check the box here.
 
-- [ ] Should `interstate.csv` replace `trade.csv` for US domestic records in SQL, or always exist as a separate parallel table?
 - [ ] For the renamed BEA columns, what are the preferred final names: `commodity_code` / `industry_code`, or domain-specific alternatives?
 - [ ] What does `economic_multiplier` represent, and is that the intended final column name?
 - [ ] Should `trade_price_indices.csv` be generated for all three tradeflows (`domestic`, `imports`, `exports`) or only selected ones?

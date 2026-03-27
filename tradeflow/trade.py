@@ -6,7 +6,7 @@ Outputs trade.csv with columns: year, region1, region2, industry1, industry2, am
 
 Default (Recommended):
 python trade.py
-Creates small trade_factor.csv (~50 factors, manageable size)
+Creates small trade_factor.csv (50 to 120 factors, manageable size)
 
 Large File (Not Recommended):
 python trade.py -lag
@@ -23,7 +23,7 @@ Creates 4 files
   amount
 
   3. Trade Factors (your focus):
-  - trade_factor.csv (default, small ~50 factors)
+  - trade_factor.csv (default, small 50 to 120 factors)
   - trade_factor_lg.csv (with -lag flag, large ~721 factors)
 
 """
