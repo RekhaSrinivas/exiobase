@@ -6,6 +6,21 @@ Table naming designed for 3rd graders. [View Report Sample](../../profile/footpr
 
 **The factor_id field** represents 721 unique impacts applied to each annual trade row (for imports, exports and domestic).
 
+**trade.amount** is in **million Euros (M EUR)**, sourced directly from the Exiobase Z matrix (inter-industry transaction flows). Environmental factor coefficients are expressed per million EUR of output.
+
+**trade_factor.level** is in physical units — not Euros. The coefficient converts M EUR → a physical quantity whose unit varies by extension:
+
+| Extension | Unit |
+|---|---|
+| air_emissions | kg |
+| employment | 1000 persons |
+| energy | TJ (terajoules) |
+| land | km² |
+| material | kt (kilotonnes) |
+| water | Mm³ (million cubic metres) |
+
+The unit for any given row is found by joining to `factor.csv` on `factor_id` and reading the `unit` column.
+
 Trade is traditionally called flow, but the term lacks clarity when relating annual trade rows to multiple factors.
 
 Later, the 6-character "commodity" sectors can reside in the 5-character "trade" tables, or in tables starting with "commodity".

@@ -102,10 +102,10 @@ country        VARCHAR(10)    NOT NULL
 flow_type      VARCHAR(10)    NOT NULL
 factor_id      INTEGER        NOT NULL   REFERENCES factor(factor_id)
 coefficient    NUMERIC(20,10)
-impact_value   NUMERIC(20,6)
+level   NUMERIC(20,6)
 ```
 
-Source columns: `trade_id, factor_id, coefficient, impact_value`
+Source columns: `trade_id, factor_id, coefficient, level`
 Added on insert: `year`, `country`, `flow_type`
 
 JOIN to `trade`: `trade_factor.trade_id = trade.trade_id AND trade_factor.year = trade.year AND trade_factor.country = trade.country AND trade_factor.flow_type = trade.flow_type`
@@ -136,17 +136,12 @@ Source columns: `trade_id, year, region1, region2, industry1, industry2, amount,
 
 ```sql
 id                  BIGSERIAL      PRIMARY KEY
-interstate_id       VARCHAR(80)    NOT NULL   -- {year}-US-{origin}-US-{dest}-{industry}
-trade_id            INTEGER        NOT NULL
+interstate_id       VARCHAR(80)    NOT NULL
 factor_id           INTEGER        REFERENCES factor(factor_id)
-coefficient         NUMERIC(20,10)            -- Exiobase S-matrix intensity for US sector
-state_industry_code VARCHAR(30)
-flow_value          NUMERIC(20,6)
-flow_type           VARCHAR(20)
-employment_impact   NUMERIC(20,10)
+level               NUMERIC(20,6)
 ```
 
-Source columns: `trade_id, factor_id, coefficient, state_industry_code, flow_value, flow_type, employment_impact`
+Source columns: `trade_id, factor_id, coefficient, state_industry_code, level, flow_type, employment_impact`
 `interstate_id` is computed: `{year}-US-{origin_state}-US-{destination_state}-{state_industry_code}`
 `factor_id` and `coefficient` are populated from the Exiobase S matrix (satellite intensity); rows
 without satellite data (Exiobase zip unavailable) omit these columns and fall back to one aggregate

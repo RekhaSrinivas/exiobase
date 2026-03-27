@@ -227,7 +227,7 @@ class USBEATradeFlow:
     
     def _enhance_with_bea_data(self, tradeflow):
         """Enhance trade data with US-BEA API data"""
-        
+
         # Get relevant BEA datasets based on tradeflow
         if tradeflow == 'imports':
             self._fetch_bea_imports_data()
@@ -235,9 +235,8 @@ class USBEATradeFlow:
             self._fetch_bea_exports_data()
         elif tradeflow == 'domestic':
             self._fetch_bea_domestic_data()
-            
-        # Create US-BEA trade detail enhancement
-        self._create_interstate_csvfiles()
+            # interstate.csv for domestic is generated in Phase 3 from state-pair disaggregation
+            self._create_interstate_csvfiles()
         
     def _fetch_bea_imports_data(self):
         """Fetch BEA imports data from API"""
@@ -342,6 +341,10 @@ class USBEATradeFlow:
             elif self.current_tradeflow == 'domestic' and hasattr(self, 'bea_domestic_data'):
                 enhanced_detail = self._merge_bea_domestic(enhanced_detail)
             
+            # Rename trade_id → interstate_id as the primary key for the interstate table
+            if 'trade_id' in enhanced_detail.columns:
+                enhanced_detail = enhanced_detail.rename(columns={'trade_id': 'interstate_id'})
+
             # Save enhanced detail
             output_file = trade_file.parent / 'interstate.csv'
             output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -434,20 +437,64 @@ class USBEATradeFlow:
                 output_path = trade_file.parent
                 output_path.mkdir(parents=True, exist_ok=True)
 
-                internal_cols = ['_origin_state', '_destination_state', '_industry1']
                 has_satellite = bool(getattr(self.state_analyzer, '_satellite_data', None))
                 use_partial = self.config['PROCESSING'].get('use_partial_factors_interstate', True)
-                partial_limit = self.config['PROCESSING'].get('partial_factor_limit', 120)
-
-                if has_satellite and not use_partial and '_industry1' in state_flows.columns:
-                    # Save full 721-factor file as interstate_factor_lg.csv
-                    lg_file = self.config['FILES'].get('interstate_factor_lg', 'interstate_factor_lg.csv')
-                    lg_df = state_flows.drop(columns=[c for c in internal_cols if c in state_flows.columns])
-                    lg_df.to_csv(output_path / lg_file, index=False)
-                    print(f"    ✅ Created {lg_file} ({len(lg_df)} rows, all factors)")
+                partial_limit = self.config['PROCESSING'].get('partial_factor_limit_interstate', 50)
 
                 if has_satellite and '_industry1' in state_flows.columns:
-                    # Filter to top partial_limit factors per industry (sorted by magnitude in satellite_data)
+                    # Build integer interstate_id from unique state-pair combinations
+                    unique_pairs = (
+                        state_flows[['interstate_id', 'trade_id', '_origin_state', '_destination_state',
+                                     '_industry1', 'state_industry_code', 'level']]
+                        .drop_duplicates(subset=['interstate_id'])
+                        .reset_index(drop=True)
+                    )
+                    unique_pairs.insert(0, 'interstate_id_int', range(1, len(unique_pairs) + 1))
+                    id_map = dict(zip(unique_pairs['interstate_id'], unique_pairs['interstate_id_int']))
+
+                    # Overwrite interstate.csv with proper state-pair rows and integer interstate_id
+                    interstate_df = pd.DataFrame({
+                        'interstate_id': unique_pairs['interstate_id_int'],
+                        'trade_id':      unique_pairs['trade_id'],
+                        'year':          self.config['YEAR'],
+                        'region1':       unique_pairs['_origin_state'],
+                        'region2':       unique_pairs['_destination_state'],
+                        'industry1':     unique_pairs['_industry1'],
+                        'state_industry_code': unique_pairs['state_industry_code'],
+                        'amount':        unique_pairs['level'],
+                    })
+                    interstate_df.to_csv(output_path / 'interstate.csv', index=False)
+                    print(f"    ✅ Created interstate.csv ({len(interstate_df)} state-pair rows)")
+
+                    # Map string interstate_id → integer in state_flows
+                    state_flows['interstate_id'] = state_flows['interstate_id'].map(id_map)
+
+                    # Compute level = level × coefficient
+                    state_flows['level'] = state_flows['level'] * state_flows['coefficient']
+
+                    # Round: 3 decimals for water/air_emissions, 0 for other extensions
+                    factors_ref_path = Path(get_reference_file_path(self.config, 'factors'))
+                    if not factors_ref_path.exists():
+                        print(f"    ❌ factor.csv not found at {factors_ref_path} — cannot apply extension-based rounding. Stopping.")
+                        return
+                    ext_map = pd.read_csv(factors_ref_path)[['factor_id', 'extension']]
+                    state_flows = state_flows.merge(ext_map, on='factor_id', how='left')
+                    fine = state_flows['extension'].isin(('water', 'air_emissions'))
+                    missing = state_flows['extension'].isna()
+                    state_flows.loc[fine,             'level'] = state_flows.loc[fine,             'level'].round(3)
+                    state_flows.loc[missing,          'level'] = state_flows.loc[missing,          'level'].round(3)
+                    state_flows.loc[~fine & ~missing, 'level'] = state_flows.loc[~fine & ~missing, 'level'].round(0).astype(int)
+                    state_flows = state_flows.drop(columns=['extension'])
+
+                    factor_cols = ['interstate_id', 'factor_id', 'level']
+
+                    # Optionally generate large file (all 721 factors)
+                    if not use_partial:
+                        lg_file = self.config['FILES'].get('interstate_factor_lg', 'interstate_factor_lg.csv')
+                        state_flows[factor_cols].to_csv(output_path / lg_file, index=False)
+                        print(f"    ✅ Created {lg_file} ({len(state_flows)} rows, all factors)")
+
+                    # Filter to top partial_limit factors per industry and save
                     satellite = self.state_analyzer._satellite_data
                     lookup_rows = [
                         {'_industry1': iid, 'factor_id': fid}
@@ -461,13 +508,13 @@ class USBEATradeFlow:
                         )
                     else:
                         state_flows_limited = state_flows.copy()
-                    state_flows_limited = state_flows_limited.drop(
-                        columns=[c for c in internal_cols if c in state_flows_limited.columns]
-                    )
-                    state_flows_limited.to_csv(output_path / 'interstate_factor.csv', index=False)
+
+                    state_flows_limited[factor_cols].to_csv(output_path / 'interstate_factor.csv', index=False)
                     print(f"    ✅ Created interstate_factor.csv ({len(state_flows_limited)} rows, {partial_limit} Selected Factors)")
+
                 else:
-                    # No satellite data or no _industry1 — write as-is
+                    # No satellite data — drop internal cols and save as-is
+                    internal_cols = ['_origin_state', '_destination_state', '_industry1']
                     state_flows_out = state_flows.drop(
                         columns=[c for c in internal_cols if c in state_flows.columns]
                     )

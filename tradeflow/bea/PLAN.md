@@ -28,12 +28,12 @@
 
   **Current state (confirmed from live data):**
   - `state_trade_flows.csv` has 817,684 rows across 21,518 unique `trade_id` values and only 38 unique state pairs.
-  - It produces a **single aggregate `flow_value`** per (trade_id, origin_state, destination_state) — the geographic disaggregation of the domestic trade `amount`, not a per-factor environmental impact.
+  - It produces a **single aggregate `level`** per (trade_id, origin_state, destination_state) — the geographic disaggregation of the domestic trade `amount`, not a per-factor environmental impact.
   - It has no `factor_id` column. `employment_impact` is a derived BEA scalar, not mapped to a specific Exiobase factor.
 
   **Limitations preventing a direct add:**
 
-  1. **Source data has no factor dimension.** `flow_value` is the total disaggregated flow (equivalent to `amount` in `trade`). The factor dimension is never applied during state disaggregation in `main_trade_analyzer.py`. To add `factor_id`, the Python generator must loop over factors from `trade_factor.csv` during `_disaggregate_single_flow`, multiplying each state-pair flow by each factor coefficient.
+  1. **Source data has no factor dimension.** `level` is the total disaggregated flow (equivalent to `amount` in `trade`). The factor dimension is never applied during state disaggregation in `main_trade_analyzer.py`. To add `factor_id`, the Python generator must loop over factors from `trade_factor.csv` during `_disaggregate_single_flow`, multiplying each state-pair flow by each factor coefficient.
 
   2. **Scale impact.** The current 817,684 rows × 120 factors (trade_factor.csv) = ~98 million rows. If all 721 factors (trade_factor_lg.csv) are used, ~590 million rows. This is a significant storage and query performance consideration.
 
@@ -42,7 +42,7 @@
   4. **`state_industry_code` is currently only `'services'`** — a single placeholder category. Until real industry-level disaggregation is implemented, per-factor rows would all have the same industry context.
 
   **Path forward (requires Python changes in `main_trade_analyzer.py`):**
-  - In `_disaggregate_single_flow`, after computing the state-pair flow fraction, join with `trade_factor.csv` on `trade_id` and emit one row per `factor_id` with `flow_value * coefficient` as the impact.
+  - In `_disaggregate_single_flow`, after computing the state-pair flow fraction, join with `trade_factor.csv` on `trade_id` and emit one row per `factor_id` with `level * coefficient` as the impact.
   - Add `factor_id` and (optionally) `coefficient` columns to the output.
   - Consider a `factor_limit` parameter (default 120) to match the `trade_factor.csv` selection and keep row counts manageable.
   - The SQL `interstate_factor` table already has a `bigserial` PK and is ready to receive the column once the Python output includes it — no schema change needed beyond adding the FK: `ALTER TABLE interstate_factor ADD COLUMN factor_id INTEGER REFERENCES factor(factor_id)`.

@@ -254,7 +254,7 @@ class StateTradeAnalyzer:
                 if flow_share <= 0:
                     continue
 
-                flow_value = total_value * flow_share
+                level = total_value * flow_share
                 interstate_id = f"{self.year}-US-{origin_state}-US-{dest_state}-{industry}"
 
                 if factor_entries:
@@ -266,7 +266,7 @@ class StateTradeAnalyzer:
                             'factor_id': fid,
                             'coefficient': coeff,
                             'state_industry_code': industry,
-                            'flow_value': flow_value,
+                            'level': level,
                             'flow_type': 'inter_state',
                             'employment_impact': 0,
                             # Internal only — dropped before CSV write
@@ -280,7 +280,7 @@ class StateTradeAnalyzer:
                         'interstate_id': interstate_id,
                         'trade_id': trade_row.get('trade_id', ''),
                         'state_industry_code': industry,
-                        'flow_value': flow_value,
+                        'level': level,
                         'flow_type': 'inter_state',
                         'employment_impact': 0,
                         '_origin_state': origin_state,
@@ -362,7 +362,7 @@ class StateTradeAnalyzer:
         
         for index, row in state_flows_df.iterrows():
             industry = row['state_industry_code']
-            flow_value = row['flow_value']
+            level = row['level']
             
             # Get employment multipliers for industry
             multipliers = self.employment_multipliers.get(industry, 
@@ -381,7 +381,7 @@ class StateTradeAnalyzer:
                 jobs_per_million = 25.0
             
             # Calculate total employment impact
-            employment_impact = (flow_value / 1000000) * jobs_per_million
+            employment_impact = (level / 1000000) * jobs_per_million
             state_flows_df.loc[index, 'employment_impact'] = employment_impact
         
         return state_flows_df
@@ -395,7 +395,7 @@ class StateTradeAnalyzer:
         
         # Aggregate flows by destination state and industry
         state_industry_agg = state_flows_df.groupby(['_destination_state', 'state_industry_code']).agg({
-            'flow_value': 'sum',
+            'level': 'sum',
             'employment_impact': 'sum'
         }).reset_index()
         
@@ -404,7 +404,7 @@ class StateTradeAnalyzer:
         for _, row in state_industry_agg.iterrows():
             state = row['_destination_state']
             industry = row['state_industry_code']
-            flow_value = row['flow_value']
+            level = row['level']
             direct_jobs = row['employment_impact']
             
             # Get multipliers
@@ -416,7 +416,7 @@ class StateTradeAnalyzer:
             induced_jobs = direct_jobs * multipliers['induced']
             
             # Calculate output and tax impacts
-            total_output_impact = flow_value * self.output_multiplier
+            total_output_impact = level * self.output_multiplier
             tax_revenue_impact = total_output_impact * self.tax_revenue_rate
             
             impacts.append({

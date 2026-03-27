@@ -60,4 +60,5 @@ PROCESSING:
   partial_factor_limit: 120
   use_partial_factors_domestic: false
   partial_factor_limit_domestic: 2000
+  partial_factor_limit_interstate: 50
   use_partial_factors_interstate: true

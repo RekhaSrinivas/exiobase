@@ -311,16 +311,22 @@ class ExiobaseTradeFlow:
                             trade_factor_merge = pd.DataFrame()
                         
                         if not trade_factor_merge.empty:
-                            # Calculate factor impacts
-                            trade_factor_merge['impact_value'] = trade_factor_merge['amount'] * trade_factor_merge['coefficient']
-                            
+                            # Calculate factor level (physical impact quantity)
+                            trade_factor_merge['level'] = trade_factor_merge['amount'] * trade_factor_merge['coefficient']
+
+                            # Round: 3 decimals for water/air_emissions (small physical quantities), 0 for others
+                            if ext_name in ('water', 'air_emissions'):
+                                trade_factor_merge['level'] = trade_factor_merge['level'].round(3)
+                            else:
+                                trade_factor_merge['level'] = trade_factor_merge['level'].round(0).astype(int)
+
                             # Filter for meaningful impacts (keep all meaningful data)
                             initial_count = len(trade_factor_merge)
-                            trade_factor_merge = trade_factor_merge[abs(trade_factor_merge['impact_value']) > 0.001]
+                            trade_factor_merge = trade_factor_merge[abs(trade_factor_merge['level']) > 0.001]
                             print(f"  Filtered {initial_count} -> {len(trade_factor_merge)} meaningful impacts (>0.001)")
-                            
+
                             # Keep only needed columns and verify factor_id integrity
-                            trade_factor_subset = trade_factor_merge[['trade_id', 'factor_id', 'coefficient', 'impact_value']]
+                            trade_factor_subset = trade_factor_merge[['trade_id', 'factor_id', 'level']]
                             
                             # Check for any remaining NaN values in factor_id
                             nan_count = trade_factor_subset['factor_id'].isna().sum()
@@ -362,7 +368,7 @@ class ExiobaseTradeFlow:
                 output_file = get_file_path(self.config, 'trade_factor')
                 if output_file.endswith('_lg.csv'):
                     output_file = output_file.replace('_lg.csv', '.csv')
-                pd.DataFrame(columns=['trade_id', 'factor_id', 'coefficient', 'impact_value']).to_csv(output_file, index=False)
+                pd.DataFrame(columns=['trade_id', 'factor_id', 'level']).to_csv(output_file, index=False)
                 
         except Exception as e:
             print(f"Error creating trade_factor.csv: {e}")
@@ -392,13 +398,10 @@ class ExiobaseTradeFlow:
                     else:
                         coefficient = np.random.uniform(0.001, 0.05)
                     
-                    impact_value = trade_row['amount'] * coefficient
-                    
                     sample_factors.append({
                         'trade_id': trade_row['trade_id'],
                         'factor_id': factor_id,
-                        'coefficient': coefficient,
-                        'impact_value': impact_value
+                        'level': trade_row['amount'] * coefficient
                     })
             
             trade_factor_df = pd.DataFrame(sample_factors)

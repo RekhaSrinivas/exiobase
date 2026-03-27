@@ -43,7 +43,7 @@ Orchestrates all three tradeflows through a five-phase pipeline: base Exiobase d
 
 **Generates:**
 - `year/{year}/US/domestic/interstate.csv` — BEA-enhanced state-to-state trade detail
-- `year/{year}/US/domestic/interstate_factor.csv` — state-level flows with `factor_id` + `coefficient` from Exiobase S matrix (120 Selected Factors)
+- `year/{year}/US/domestic/interstate_factor.csv` — state-level flows with `factor_id` + `coefficient` from Exiobase S matrix (50 Selected Factors)
 - `year/{year}/US/domestic/interstate_factor_lg.csv` — same as above with all 721 factors (generated when `use_partial_factors_interstate: false` in `config.yaml`)
 - `year/{year}/US/domestic/trade_price_indices.csv` — trade price indices (currently empty; see [PLAN.md](PLAN.md))
 - `year/{year}/US/bea-report.md` — validation and processing summary report
@@ -66,7 +66,7 @@ Orchestrates all three tradeflows through a five-phase pipeline: base Exiobase d
 
 # To Investigate
 
-From March 27, 2026
+From March 27, 2026 - AM
 
 - interstate_factor.csv — 68,465,474 rows, 120 Selected Factors (filtered down
  from 75,369,200 full-factor records)
@@ -113,17 +113,41 @@ Planning note (tracked in [PLAN.md](PLAN.md)): clarify whether the BEA pull make
 <!--
 trade_id, bea_commodity_code, bea_industry_code, trade_balance, import_value, export_value, trade_partner_state, transport_mode
 -->
-trade_id, year, region1 (US-AK), region2 (US-GA), industry1, industry2, amount,
+interstate_id, trade_id, year, region1 (NY), region2 (CA), industry1, industry2, amount,
 commodity_code, industry_code, economic_multiplier
+
+**interstate.amount** is in million Euros (M EUR), consistent with `trade.amount` — both are sourced from the Exiobase Z matrix. The interstate amount is the national trade flow amount allocated to a specific state pair.
+
+**interstate_factor.level** is in physical units — not Euros. The coefficient converts M EUR → a physical quantity whose unit varies by extension:
+
+| Extension | Unit |
+|---|---|
+| air_emissions | kg |
+| employment | 1000 persons |
+| energy | TJ (terajoules) |
+| land | km² |
+| material | kt (kilotonnes) |
+| water | Mm³ (million cubic metres) |
+
+The unit for any given row is found by joining to `factor.csv` on `factor_id` and reading the `unit` column.
 
 The "interstate" table has the same structure as the international "trade" table.
 In some SQL installs, we'll place state data in the "trade" table with multi-country trade data.
 
 
 #### interstate_factor - rename from [state_trade_flows.csv](https://raw.githubusercontent.com/ModelEarth/trade-data/refs/heads/main/year/2019/US/domestic/state_trade_flows.csv) (State-Level Analysis)
-interstate_id, trade_id, **factor_id**, coefficient, state_industry_code, flow_value, flow_type, employment_impact
+interstate_id, factor_id, level
 
 `origin_state` and `destination_state` are no longer separate columns here — they are encoded in `interstate_id` and available via `interstate.region1` / `interstate.region2`.
+
+**Column notes:**
+- `interstate_factor.level` = `interstate.amount × coefficient`, rounded to 2 decimals. `coefficient` is not stored separately — it is derivable as `level / interstate.amount`. Note: back-deriving coefficient is approximate since `level` is rounded to 2dp. The column is named `level` rather than `levelX` to avoid implying a monetary unit — it is a physical quantity (kg, persons, TJ, etc.).
+- These three fields are omitted from `interstate_factor` (available via joins to `interstate` and `trade`):
+  - `state_industry_code` — broad industry category (services, manufacturing, etc.)
+  - `flow_type` — always `inter_state`
+  - `employment_impact` — always `0` (employment is captured as Exiobase factor rows when satellite data is loaded)
+- `interstate_factor.trade_id` is omitted — the trade relation can be navigated as `interstate_factor → interstate → trade`, where `trade.region1` and `trade.region2` are the current country and `industry1`/`industry2` values align across the tables.
+- `interstate.region1` and `interstate.region2` are state codes only (e.g. `NY`, `CA`), not prefixed with `US-`.
 
 **120 Selected Factors vs All 721 Factors:**
 
@@ -226,6 +250,19 @@ BEA API authentication and data retrieval with rate limiting, response caching, 
 - `InputOutput` — Industry input-output tables (`Summary` or `Detail`)
 - `GDPbyIndustry` — GDP by industry
 
+**BEA-sourced columns in `interstate.csv`** (intended; merge into output is pending full implementation):
+
+| Column | Tradeflow | BEA dataset | Fallback when API unavailable |
+|---|---|---|---|
+| `commodity_code` | imports, exports | IntlServTrade | `""` (empty string) |
+| `industry_code` | imports, exports | IntlServTrade | `""` (empty string) |
+| `trade_balance` | imports, exports | IntlServTrade | `0.0` |
+| `import_value` | imports | IntlServTrade | copied from `amount` |
+| `export_value` | exports | IntlServTrade | copied from `amount` |
+| `economic_multiplier` | domestic | InputOutput | `1.0` |
+
+Note: The BEA API responses are fetched and cached but the per-row merge into `interstate.csv` columns is not yet fully implemented — all rows currently receive the fallback values above regardless of API availability.
+
 **Uses:**
 - BEA API key from `webroot/.env` (`BEA_API_KEY=...`) or `--bea-key` argument
 - `bea_cache/*.json` — cached responses from prior runs (24-hour TTL; API key excluded from cache keys)
@@ -257,8 +294,7 @@ State-level trade flow disaggregation, employment and output impact calculations
 
 **Generates:**
 - `year/[year]/US/domestic/interstate_factor.csv` — state-to-state trade flows, 120 Selected Factors
-  Columns: `interstate_id, trade_id, factor_id, coefficient, state_industry_code, flow_value, flow_type, employment_impact`
-  (`interstate_id` format: `{year}-US-{origin}-US-{dest}-{industry}`)
+  Columns: `interstate_id` (integer FK to interstate.csv), `factor_id`, `level` (2dp)
 - `year/[year]/US/domestic/interstate_factor_lg.csv` — same with all 721 factors; generated when `use_partial_factors_interstate: false` in `config.yaml`
 - `year/[year]/US/domestic/state_industry_impacts.csv` — employment and output impacts aggregated by destination region and industry
   Columns: `region (US-AK), industry_code, direct_jobs, indirect_jobs, induced_jobs, total_output_impact, tax_revenue_impact`
