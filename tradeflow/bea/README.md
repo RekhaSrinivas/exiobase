@@ -64,6 +64,21 @@ Orchestrates all three tradeflows through a five-phase pipeline: base Exiobase d
 
 <br>
 
+# To Investigate
+
+From March 27, 2026
+
+- interstate_factor.csv — 68,465,474 rows, 120 Selected Factors (filtered down
+ from 75,369,200 full-factor records)
+- Domestic processing took ~2.5 hours (9,234 seconds) - not yet confirmed, driven by the satellite
+ disaggregation generating 75M state-to-state flow records before filtering to
+ 68M
+- Imports and exports completed quickly (56s and 1,007s) using existing base
+data
+- BEA API was unavailable (empty response), so those enhancements were skipped
+- FEDEFL online source returned 404, so local fallback flows were used (24
+flows for domestic)
+
 # Tables Name and Column Design
 
 For .csv import to SQL
