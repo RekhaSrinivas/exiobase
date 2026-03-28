@@ -95,7 +95,8 @@ th, td { padding: 4px 20px 4px 8px; text-align: left; border-bottom: 1px solid #
   overflow-x: auto;
 }
 #schema-svg {
-  min-width: 700px;
+  width: 100%;
+  display: block;
 }
 .schema-loading {
   font-size: 13px;
@@ -254,15 +255,19 @@ loadMarkdown("AGENTS.md", "agentsDiv", "_parent");
     svg.style.display = '';
     svg.innerHTML = '';
 
-    // Layout positions (cx, cy) for each table box
+    // Mutable layout positions for each table box
     const layout = {
       industry:           { x: 260, y: 10  },
       factor:             { x: 530, y: 10  },
       trade:              { x: 260, y: 180 },
       trade_factor:       { x: 530, y: 180 },
       interstate:         { x: 20,  y: 350 },
-      interstate_factor:  { x: 310, y: 350 }
+      interstate_factor:  { x: 310, y: 430 }
     };
+    try {
+      const saved = JSON.parse(localStorage.getItem('industry-schema-positions') || 'null');
+      if (saved) Object.keys(layout).forEach(k => { if (saved[k]) layout[k] = saved[k]; });
+    } catch(e) {}
 
     const BOX_W = 190, BOX_H_BASE = 28, ROW_H = 18;
     const tables = (data && data.tables) ? data.tables : {};
@@ -285,15 +290,12 @@ loadMarkdown("AGENTS.md", "agentsDiv", "_parent");
       boxHeights[name] = BOX_H_BASE + cols.length * ROW_H + 6;
     });
 
-    // Total SVG height
-    const maxY = Math.max(...Object.values(layout).map((p, i) => {
-      const name = Object.keys(layout)[i];
-      return p.y + boxHeights[name];
-    }));
-    svg.setAttribute('viewBox', `0 0 750 ${maxY + 20}`);
+    // Total SVG height; viewBox width matches container so 1 unit = 1px (tables stay same size)
+    const maxY = Math.max(...Object.entries(layout).map(([name, p]) => p.y + (boxHeights[name] || 80)));
+    const canvasW = Math.max(svg.parentElement.clientWidth || 0, 750);
+    svg.setAttribute('viewBox', `0 0 ${canvasW} ${maxY + 20}`);
     svg.setAttribute('height', maxY + 20);
 
-    // Draw relationship arrows first (behind boxes)
     const NS = 'http://www.w3.org/2000/svg';
 
     // Arrow marker
@@ -304,14 +306,17 @@ loadMarkdown("AGENTS.md", "agentsDiv", "_parent");
       </marker>`;
     svg.appendChild(defs);
 
+    // Line layer drawn first so boxes render on top
+    const lineLayer = document.createElementNS(NS, 'g');
+    svg.appendChild(lineLayer);
+
+    const lineEls = {}, labelEls = {};
     rels.forEach(([fromName, toName, label]) => {
-      const from = layout[fromName];
-      const to   = layout[toName];
+      const from = layout[fromName], to = layout[toName];
       if (!from || !to) return;
-      const fx = from.x + BOX_W / 2;
-      const fy = from.y + (boxHeights[fromName] || 80) / 2;
-      const tx = to.x + BOX_W / 2;
-      const ty = to.y + (boxHeights[toName] || 80) / 2;
+      const key = `${fromName}::${toName}`;
+      const fx = from.x + BOX_W / 2, fy = from.y + (boxHeights[fromName] || 80) / 2;
+      const tx = to.x + BOX_W / 2,   ty = to.y + (boxHeights[toName]   || 80) / 2;
 
       const line = document.createElementNS(NS, 'line');
       line.setAttribute('x1', fx); line.setAttribute('y1', fy);
@@ -320,110 +325,184 @@ loadMarkdown("AGENTS.md", "agentsDiv", "_parent");
       line.setAttribute('stroke-width', '1.5');
       line.setAttribute('stroke-dasharray', '5,3');
       line.setAttribute('marker-end', 'url(#arrowhead)');
-      svg.appendChild(line);
+      lineLayer.appendChild(line);
+      lineEls[key] = line;
 
-      // Label at midpoint
-      const lx = (fx + tx) / 2;
-      const ly = (fy + ty) / 2 - 4;
       const txt = document.createElementNS(NS, 'text');
-      txt.setAttribute('x', lx); txt.setAttribute('y', ly);
+      txt.setAttribute('x', (fx + tx) / 2); txt.setAttribute('y', (fy + ty) / 2 - 4);
       txt.setAttribute('text-anchor', 'middle');
       txt.setAttribute('font-size', '9');
       txt.setAttribute('fill', '#9CA3AF');
       txt.textContent = label;
-      svg.appendChild(txt);
+      lineLayer.appendChild(txt);
+      labelEls[key] = txt;
     });
 
-    // Draw table boxes
+    function updateLines(movedName) {
+      rels.forEach(([fromName, toName]) => {
+        if (fromName !== movedName && toName !== movedName) return;
+        const key = `${fromName}::${toName}`;
+        if (!lineEls[key]) return;
+        const from = layout[fromName], to = layout[toName];
+        const fx = from.x + BOX_W / 2, fy = from.y + (boxHeights[fromName] || 80) / 2;
+        const tx = to.x + BOX_W / 2,   ty = to.y + (boxHeights[toName]   || 80) / 2;
+        lineEls[key].setAttribute('x1', fx); lineEls[key].setAttribute('y1', fy);
+        lineEls[key].setAttribute('x2', tx); lineEls[key].setAttribute('y2', ty);
+        labelEls[key].setAttribute('x', (fx + tx) / 2);
+        labelEls[key].setAttribute('y', (fy + ty) / 2 - 4);
+      });
+    }
+
+    // Draw table boxes as draggable groups with relative coordinates
+    const groupEls = {};
     Object.entries(layout).forEach(([name, pos]) => {
       const info = tables[name] || {};
-      const cols = (info.columns) ? info.columns : (staticSchema[name] || []);
+      const cols = info.columns ? info.columns : (staticSchema[name] || []);
       const exists = info.exists !== false;
       const rowCount = info.row_count || 0;
       const boxH = boxHeights[name];
 
-      // Shadow rect
+      const g = document.createElementNS(NS, 'g');
+      g.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+      g.setAttribute('data-table', name);
+      groupEls[name] = g;
+
+      // Shadow
       const shadow = document.createElementNS(NS, 'rect');
-      shadow.setAttribute('x', pos.x + 2); shadow.setAttribute('y', pos.y + 2);
+      shadow.setAttribute('x', 2); shadow.setAttribute('y', 2);
       shadow.setAttribute('width', BOX_W); shadow.setAttribute('height', boxH);
       shadow.setAttribute('rx', '6'); shadow.setAttribute('ry', '6');
       shadow.setAttribute('fill', 'rgba(0,0,0,0.07)');
-      svg.appendChild(shadow);
+      g.appendChild(shadow);
 
       // Main box
       const rect = document.createElementNS(NS, 'rect');
-      rect.setAttribute('x', pos.x); rect.setAttribute('y', pos.y);
+      rect.setAttribute('x', 0); rect.setAttribute('y', 0);
       rect.setAttribute('width', BOX_W); rect.setAttribute('height', boxH);
       rect.setAttribute('rx', '6'); rect.setAttribute('ry', '6');
       rect.setAttribute('fill', exists ? '#F0FDF4' : '#F9FAFB');
       rect.setAttribute('stroke', exists ? '#10B981' : '#D1D5DB');
       rect.setAttribute('stroke-width', exists ? '2' : '1.5');
-      svg.appendChild(rect);
+      g.appendChild(rect);
 
-      // Header bar
+      // Header bar (drag handle)
       const hdr = document.createElementNS(NS, 'rect');
-      hdr.setAttribute('x', pos.x); hdr.setAttribute('y', pos.y);
+      hdr.setAttribute('x', 0); hdr.setAttribute('y', 0);
       hdr.setAttribute('width', BOX_W); hdr.setAttribute('height', BOX_H_BASE);
       hdr.setAttribute('rx', '6'); hdr.setAttribute('ry', '6');
       hdr.setAttribute('fill', exists ? '#10B981' : '#6B7280');
-      svg.appendChild(hdr);
-      // Bottom of header bar (square corners)
+      hdr.setAttribute('data-drag-handle', '1');
+      hdr.style.cursor = 'grab';
+      g.appendChild(hdr);
+
+      // Header bar bottom fill (square corners, also drag handle)
       const hdr2 = document.createElementNS(NS, 'rect');
-      hdr2.setAttribute('x', pos.x); hdr2.setAttribute('y', pos.y + BOX_H_BASE - 6);
+      hdr2.setAttribute('x', 0); hdr2.setAttribute('y', BOX_H_BASE - 6);
       hdr2.setAttribute('width', BOX_W); hdr2.setAttribute('height', 6);
       hdr2.setAttribute('fill', exists ? '#10B981' : '#6B7280');
-      svg.appendChild(hdr2);
+      hdr2.setAttribute('data-drag-handle', '1');
+      hdr2.style.cursor = 'grab';
+      g.appendChild(hdr2);
 
-      // Table name
+      // Table name (drag handle)
       const tname = document.createElementNS(NS, 'text');
-      tname.setAttribute('x', pos.x + 10); tname.setAttribute('y', pos.y + 18);
+      tname.setAttribute('x', 10); tname.setAttribute('y', 18);
       tname.setAttribute('font-size', '12'); tname.setAttribute('font-weight', 'bold');
       tname.setAttribute('fill', '#fff');
+      tname.setAttribute('data-drag-handle', '1');
+      tname.style.cursor = 'grab';
       tname.textContent = name;
-      svg.appendChild(tname);
+      g.appendChild(tname);
 
-      // Row count badge
+      // Row count badge (drag handle)
       if (rowCount > 0) {
         const badge = document.createElementNS(NS, 'text');
-        badge.setAttribute('x', pos.x + BOX_W - 6); badge.setAttribute('y', pos.y + 18);
+        badge.setAttribute('x', BOX_W - 6); badge.setAttribute('y', 18);
         badge.setAttribute('text-anchor', 'end');
         badge.setAttribute('font-size', '10');
         badge.setAttribute('fill', 'rgba(255,255,255,0.85)');
+        badge.setAttribute('data-drag-handle', '1');
+        badge.style.cursor = 'grab';
         badge.textContent = rowCount.toLocaleString() + ' rows';
-        svg.appendChild(badge);
+        g.appendChild(badge);
       }
 
       // Columns
       cols.forEach((col, i) => {
         const colName = col.name || col;
         const colType = col.type || '';
-        const cy = pos.y + BOX_H_BASE + 4 + i * ROW_H + 13;
+        const cy = BOX_H_BASE + 4 + i * ROW_H + 13;
 
         const ctext = document.createElementNS(NS, 'text');
-        ctext.setAttribute('x', pos.x + 10); ctext.setAttribute('y', cy);
+        ctext.setAttribute('x', 10); ctext.setAttribute('y', cy);
         ctext.setAttribute('font-size', '10.5'); ctext.setAttribute('fill', '#374151');
         ctext.textContent = colName;
-        svg.appendChild(ctext);
+        g.appendChild(ctext);
 
         if (colType) {
           const dtype = document.createElementNS(NS, 'text');
-          dtype.setAttribute('x', pos.x + BOX_W - 6); dtype.setAttribute('y', cy);
+          dtype.setAttribute('x', BOX_W - 6); dtype.setAttribute('y', cy);
           dtype.setAttribute('text-anchor', 'end');
           dtype.setAttribute('font-size', '9.5'); dtype.setAttribute('fill', '#9CA3AF');
           dtype.textContent = colType.replace('character varying', 'varchar').replace('bigint','bigserial');
-          svg.appendChild(dtype);
+          g.appendChild(dtype);
         }
 
-        // Row separator
         if (i < cols.length - 1) {
           const sep = document.createElementNS(NS, 'line');
-          sep.setAttribute('x1', pos.x + 1); sep.setAttribute('y1', cy + 4);
-          sep.setAttribute('x2', pos.x + BOX_W - 1); sep.setAttribute('y2', cy + 4);
+          sep.setAttribute('x1', 1); sep.setAttribute('y1', cy + 4);
+          sep.setAttribute('x2', BOX_W - 1); sep.setAttribute('y2', cy + 4);
           sep.setAttribute('stroke', '#E5E7EB'); sep.setAttribute('stroke-width', '0.5');
-          svg.appendChild(sep);
+          g.appendChild(sep);
         }
       });
+
+      svg.appendChild(g);
     });
+
+    // Drag state
+    let drag = null;
+
+    function svgCoords(e) {
+      const pt = svg.createSVGPoint();
+      pt.x = e.clientX; pt.y = e.clientY;
+      return pt.matrixTransform(svg.getScreenCTM().inverse());
+    }
+
+    svg.addEventListener('mousedown', e => {
+      if (!e.target.getAttribute('data-drag-handle')) return;
+      const g = e.target.closest('[data-table]');
+      if (!g) return;
+      const name = g.getAttribute('data-table');
+      const p = svgCoords(e);
+      drag = { name, ox: p.x - layout[name].x, oy: p.y - layout[name].y };
+      svg.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    function onMouseMove(e) {
+      if (!drag) return;
+      const p = svgCoords(e);
+      layout[drag.name].x = p.x - drag.ox;
+      layout[drag.name].y = p.y - drag.oy;
+      groupEls[drag.name].setAttribute('transform', `translate(${layout[drag.name].x}, ${layout[drag.name].y})`);
+      updateLines(drag.name);
+    }
+
+    function onMouseUp() {
+      if (!drag) return;
+      drag = null;
+      svg.style.cursor = '';
+      try { localStorage.setItem('industry-schema-positions', JSON.stringify(layout)); } catch(e) {}
+    }
+
+    // Clean up listeners from any previous render
+    if (svg._dragMove) document.removeEventListener('mousemove', svg._dragMove);
+    if (svg._dragUp)   document.removeEventListener('mouseup',   svg._dragUp);
+    svg._dragMove = onMouseMove;
+    svg._dragUp   = onMouseUp;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup',   onMouseUp);
   }
 
   function getStaticSchema() {

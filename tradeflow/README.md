@@ -35,10 +35,10 @@ Set a year and country in the config.yaml file and run:
 python main.py
 ```
 
-Get US Interstate Data (uses the sname config.yaml file) - [Details](bea)
+Get US Interstate Data (uses the same config.yaml file) - [BEA Details](bea)
 
 ```bash
-python bea/main.py
+python bea/main.py --bea-key YOUR_API_KEY
 ```
 
 Lastly, [Send CSV into SQL database](https://github.com/ModelEarth/projects/issues/30):
