@@ -189,33 +189,31 @@ class StateTradeAnalyzer:
         return cid
 
     def disaggregate_domestic_flows(self, base_trade_df, bea_state_data=None):
-        """
-        Disaggregate national domestic flows to state-to-state flows.
-
-        When self._satellite_data is populated (via load_exiobase_satellite), each
-        state-pair flow is expanded to one row per Exiobase factor, with factor_id
-        and coefficient columns added.  Employment impacts are omitted in that case
-        because employment is already captured as Exiobase factor rows.
-
-        Args:
-            base_trade_df: Base trade DataFrame with domestic flows
-            bea_state_data: Optional BEA state-level data for enhancement
-
-        Returns:
-            DataFrame with state-level domestic trade flows
-        """
         print("    🗺️ Disaggregating domestic flows to state level...")
 
-        state_flows = []
+        CHUNK_SIZE = 100_000  # tune if needed
+        chunks = []
+        buffer = []
 
         for _, trade_row in base_trade_df.iterrows():
             state_disagg = self._disaggregate_single_flow(trade_row, bea_state_data)
-            state_flows.extend(state_disagg)
+            buffer.extend(state_disagg)
 
-        state_df = pd.DataFrame(state_flows)
+            # Flush to chunk when buffer gets large
+            if len(buffer) >= CHUNK_SIZE:
+                chunks.append(pd.DataFrame(buffer))
+                buffer = []
 
-        # Employment impacts are calculated only when satellite factor data is absent;
-        # when factor_id rows are present, employment is already encoded as Exiobase factors.
+        # Flush remaining
+        if buffer:
+            chunks.append(pd.DataFrame(buffer))
+
+        if not chunks:
+            return pd.DataFrame()
+
+        # Concatenate efficiently
+        state_df = pd.concat(chunks, ignore_index=True, copy=False)
+
         has_satellite = bool(getattr(self, '_satellite_data', None))
         if not state_df.empty and not has_satellite:
             state_df = self._calculate_employment_impacts(state_df)
@@ -241,53 +239,74 @@ class StateTradeAnalyzer:
         # Satellite factor data keyed by the actual Exiobase industry_id (5-char)
         satellite = getattr(self, '_satellite_data', None)
         industry_id = str(trade_row.get('industry1', ''))
+        industry2_id = str(trade_row.get('industry2', ''))
         factor_entries = satellite.get(industry_id, []) if satellite else []
 
+        trade_id = trade_row.get('trade_id', '')
+
+        # First collect all candidate state-pair shares
+        state_pairs = []
         for origin_state in producing_states:
             for dest_state in consuming_states:
                 if origin_state == dest_state:
                     continue
 
-                flow_share = self._calculate_state_flow_share(
+                raw_share = self._calculate_state_flow_share(
                     origin_state, dest_state, industry, bea_data
                 )
-                if flow_share <= 0:
-                    continue
 
-                level = total_value * flow_share
-                interstate_id = f"{self.year}-US-{origin_state}-US-{dest_state}-{industry}"
+                if raw_share > 0:
+                    state_pairs.append((origin_state, dest_state, raw_share))
 
-                if factor_entries:
-                    # Expand to one row per Exiobase factor
-                    for fid, coeff in factor_entries:
-                        flows.append({
-                            'interstate_id': interstate_id,
-                            'trade_id': trade_row.get('trade_id', ''),
-                            'factor_id': fid,
-                            'coefficient': coeff,
-                            'state_industry_code': industry,
-                            'level': level,
-                            'flow_type': 'inter_state',
-                            'employment_impact': 0,
-                            # Internal only — dropped before CSV write
-                            '_origin_state': origin_state,
-                            '_destination_state': dest_state,
-                            '_industry1': industry_id,
-                        })
-                else:
-                    # Aggregate row (no satellite data for this industry / satellite not loaded)
+        if not state_pairs:
+            return flows
+
+        total_share = sum(share for _, _, share in state_pairs)
+        if total_share <= 0:
+            return flows
+
+        for origin_state, dest_state, raw_share in state_pairs:
+            normalized_share = raw_share / total_share
+            level = total_value * normalized_share
+
+            interstate_id = (
+                f"{self.year}-{trade_id}-US-{origin_state}-US-{dest_state}-{industry}"
+            )
+
+            if factor_entries:
+                for fid, coeff in factor_entries:
                     flows.append({
                         'interstate_id': interstate_id,
-                        'trade_id': trade_row.get('trade_id', ''),
+                        'trade_id': trade_id,
+                        'factor_id': fid,
+                        'coefficient': coeff,
                         'state_industry_code': industry,
                         'level': level,
                         'flow_type': 'inter_state',
                         'employment_impact': 0,
                         '_origin_state': origin_state,
                         '_destination_state': dest_state,
+                        '_industry1': industry_id,
+                        '_industry2': industry2_id,
                     })
+            else:
+                flows.append({
+                    'interstate_id': interstate_id,
+                    'trade_id': trade_id,
+                    'factor_id': -1,      
+                    'coefficient': 1.0,   
+                    'state_industry_code': industry,
+                    'level': level,
+                    'flow_type': 'inter_state',
+                    'employment_impact': 0,
+                    '_origin_state': origin_state,
+                    '_destination_state': dest_state,
+                    '_industry1': industry_id,
+                    '_industry2': industry2_id,
+                })
 
         return flows
+ 
     
     def _categorize_industry(self, industry_code):
         """Categorize industry code into broad category"""
@@ -393,19 +412,52 @@ class StateTradeAnalyzer:
         
         print("    📊 Calculating state industry impacts...")
         
+        df = state_flows_df.copy()
+
+        # Normalize amount column
+        if 'amount' in df.columns and 'level' not in df.columns:
+            df = df.rename(columns={'amount': 'level'})
+
+        if 'level' not in df.columns:
+            raise ValueError("state_flows_df must contain either 'level' or 'amount'")
+
+        if 'employment_impact' not in df.columns:
+            df['employment_impact'] = 0.0
+
+        if 'economic_multiplier' not in df.columns:
+            df['economic_multiplier'] = np.nan
+
+        if 'tax_rate' not in df.columns:
+            df['tax_rate'] = np.nan
+
+        # Fill row-level fallback values
+        df['economic_multiplier'] = df['economic_multiplier'].fillna(self.output_multiplier)
+        df.loc[df['economic_multiplier'] <= 0, 'economic_multiplier'] = self.output_multiplier
+
+        df['tax_rate'] = df['tax_rate'].fillna(self.tax_revenue_rate)
+        df.loc[df['tax_rate'] < 0, 'tax_rate'] = self.tax_revenue_rate
+
+        # Compute row-level impacts FIRST
+        df['row_total_output_impact'] = df['level'] * df['economic_multiplier']
+        df['row_tax_revenue_impact'] = df['row_total_output_impact'] * df['tax_rate']
+
         # Aggregate flows by destination state and industry
-        state_industry_agg = state_flows_df.groupby(['_destination_state', 'state_industry_code']).agg({
+        state_industry_agg = df.groupby(
+            ['_destination_state', 'state_industry_code'],
+            as_index=False
+        ).agg({
             'level': 'sum',
-            'employment_impact': 'sum'
-        }).reset_index()
+            'employment_impact': 'sum',
+            'row_total_output_impact': 'sum',
+            'row_tax_revenue_impact': 'sum'
+        })
         
         impacts = []
         
         for _, row in state_industry_agg.iterrows():
             state = row['_destination_state']
             industry = row['state_industry_code']
-            level = row['level']
-            direct_jobs = row['employment_impact']
+            direct_jobs = float(row['employment_impact'])
             
             # Get multipliers
             multipliers = self.employment_multipliers.get(industry,
@@ -415,18 +467,14 @@ class StateTradeAnalyzer:
             indirect_jobs = direct_jobs * multipliers['indirect']
             induced_jobs = direct_jobs * multipliers['induced']
             
-            # Calculate output and tax impacts
-            total_output_impact = level * self.output_multiplier
-            tax_revenue_impact = total_output_impact * self.tax_revenue_rate
-            
             impacts.append({
                 'region': f'US-{state}',
                 'industry_code': industry,
                 'direct_jobs': direct_jobs,
                 'indirect_jobs': indirect_jobs, 
                 'induced_jobs': induced_jobs,
-                'total_output_impact': total_output_impact,
-                'tax_revenue_impact': tax_revenue_impact
+                'total_output_impact': float(row['row_total_output_impact']),
+                'tax_revenue_impact': float(row['row_tax_revenue_impact'])
             })
         
         impacts_df = pd.DataFrame(impacts)
