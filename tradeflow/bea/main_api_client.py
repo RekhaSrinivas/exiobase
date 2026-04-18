@@ -200,14 +200,16 @@ class BEAAPIClient:
     def process_io_response(self, response_data):
         """Process BEA Input-Output API response into DataFrame"""
         try:
-            if 'BEAAPI' in response_data and 'Results' in response_data['BEAAPI']:
-                results = response_data['BEAAPI']['Results']
-                if 'Data' in results:
-                    df = pd.DataFrame(results['Data'])
-                    return self._standardize_io_columns(df)
-            
-            return pd.DataFrame()
-            
+            results = response_data.get('BEAAPI', {}).get('Results', {})
+
+            if isinstance(results, list):
+                results = results[0] if results else {}
+
+            data = results.get('Data', [])
+            df = pd.DataFrame(data)
+
+            return self._standardize_io_columns(df)
+
         except Exception as e:
             print(f"    ⚠️ Error processing I-O response: {e}")
             return pd.DataFrame()

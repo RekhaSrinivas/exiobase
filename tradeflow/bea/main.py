@@ -96,7 +96,6 @@ class USBEATradeFlow:
     def process_all_tradeflows(self):
         """Main processing pipeline for enhanced BEA trade analysis"""
         start_time = time.time()
-        
         tradeflows = self.config['TRADEFLOW']
         if isinstance(tradeflows, str):
             if tradeflows.lower() == 'all':
@@ -295,18 +294,32 @@ class USBEATradeFlow:
             self.validation_issues.append(f"US-BEA state exports API error: {e}")
     
     def _fetch_bea_domestic_data(self):
-        """Fetch BEA domestic economic data"""
+        """Fetch BEA domestic economic data 
+                    ==AVAILABLE BEA IO TABLES ===
+        Key                                                       Desc
+        59       Total Requirements, Commodity-by-Commodity - Summary
+        58        Total Requirements, Commodity-by-Commodity - Sector
+        57        Total Requirements, Industry-by-Commodity - Summary
+        56         Total Requirements, Industry-by-Commodity - Sector
+        61         Total Requirements, Industry-by-Industry - Summary
+        60          Total Requirements, Industry-by-Industry - Sector
+        262 The Domestic Supply of Commodities by Industries - Summary
+        261  The Domestic Supply of Commodities by Industries - Sector
+        259             The Use of Commodities by Industries - Summary
+        258              The Use of Commodities by Industries - Sector
+        NOTE: BEA API tables use numeric IDs rather than labels. For reference: https://github.com/us-bea/beaapi/blob/main/docs/example_tables.ipynb """
         print("  Fetching US-BEA domestic data...")
         
         try:
             # Input-Output Tables
             response = self.bea_client.get_input_output_data(
                 year=self.config['YEAR'],
-                table_id='Summary'
+                table_id= '61'
             )
+
             self.bea_domestic_data = self.bea_client.process_io_response(response)
             print(f"    Retrieved domestic I-O data")
-            
+
         except Exception as e:
             print(f"    US-BEA domestic data unavailable: {e}")
             self.bea_domestic_data = pd.DataFrame()
@@ -385,14 +398,129 @@ class USBEATradeFlow:
         return enhanced
     
     def _merge_bea_domestic(self, base_trade):
-        """Merge US-BEA domestic data with base trade"""
+        """Merge US-BEA domestic data with trade/interstate rows"""
         enhanced = base_trade.copy()
-        
-        # Add domestic-specific columns
-        enhanced['commodity_code'] = ''
-        enhanced['industry_code'] = ''
-        enhanced['economic_multiplier'] = 1.0
-        
+
+        # Always preserve schema columns
+        if 'commodity_code' not in enhanced.columns:
+            enhanced['commodity_code'] = ''
+        if 'industry_code' not in enhanced.columns:
+            enhanced['industry_code'] = ''
+        if 'economic_multiplier' not in enhanced.columns:
+            enhanced['economic_multiplier'] = 1.0
+
+        try:
+            # Resolve shared industry.csv from config
+            industry_path = Path(get_reference_file_path(self.config, 'industries'))
+
+            year_dir = industry_path.parent
+            trade_data_dir = year_dir.parent.parent
+            concordance_dir = trade_data_dir / 'concordance'
+
+            exio_to_useeio_path = concordance_dir / 'exio_to_useeio2_commodity_concordance.csv'
+            useeio_internal_path = concordance_dir / 'useeio_internal_concordance.csv'
+
+            if not industry_path.exists():
+                raise FileNotFoundError(f"industry.csv not found at {industry_path}")
+            if not exio_to_useeio_path.exists():
+                raise FileNotFoundError(f"exio_to_useeio2_commodity_concordance.csv not found at {exio_to_useeio_path}")
+            if not useeio_internal_path.exists():
+                raise FileNotFoundError(f"useeio_internal_concordance.csv not found at {useeio_internal_path}")
+
+            # Load industry.csv
+            industry_df = pd.read_csv(
+                industry_path,
+                usecols=['industry_id', 'name']
+            ).rename(columns={
+                'industry_id': 'industry1',
+                'name': 'exiobase_name'
+            })
+
+            # Load concordance: Exiobase sector name -> USEEIO commodity
+            exio_to_useeio = pd.read_csv(
+                exio_to_useeio_path,
+                usecols=['Exiobase_Sector', 'USEEIO_Detail_2017']
+            ).rename(columns={
+                'Exiobase_Sector': 'exiobase_name',
+                'USEEIO_Detail_2017': 'commodity_code_map'
+            })
+
+            # Load concordance: USEEIO commodity -> BEA summary
+            useeio_internal = pd.read_csv(
+                useeio_internal_path,
+                usecols=['BEA_Summary', 'USEEIO_Detail_2017']
+            ).rename(columns={
+                'BEA_Summary': 'industry_code_map',
+                'USEEIO_Detail_2017': 'commodity_code_map'
+            })
+
+            # Normalize strings a bit
+            industry_df['exiobase_name'] = industry_df['exiobase_name'].astype(str).str.strip()
+            exio_to_useeio['exiobase_name'] = exio_to_useeio['exiobase_name'].astype(str).str.strip()
+
+            exio_to_useeio = exio_to_useeio.drop_duplicates(subset=['exiobase_name'])
+            useeio_internal = useeio_internal.drop_duplicates(subset=['commodity_code_map'])
+
+            # industry1 -> exiobase_name
+            if 'industry1' in enhanced.columns:
+                enhanced = enhanced.merge(industry_df, on='industry1', how='left')
+
+                # exiobase_name -> commodity_code
+                enhanced = enhanced.merge(exio_to_useeio, on='exiobase_name', how='left')
+
+                # commodity_code -> industry_code
+                enhanced = enhanced.merge(useeio_internal, on='commodity_code_map', how='left')
+
+                enhanced['commodity_code'] = enhanced['commodity_code_map'].fillna(enhanced['commodity_code'])
+                enhanced['industry_code'] = enhanced['industry_code_map'].fillna(enhanced['industry_code'])
+
+            # Attach BEA multiplier
+            bea_domestic = getattr(self, 'bea_domestic_data', pd.DataFrame())
+
+            if not bea_domestic.empty:
+                required_cols = {'RowDescr', 'col_code', 'value'}
+                if required_cols.issubset(bea_domestic.columns):
+                    bea_multiplier = (
+                        bea_domestic[
+                            bea_domestic['RowDescr'].astype(str).str.contains(
+                                'Total industry output requirement',
+                                case=False,
+                                na=False
+                            )
+                        ][['col_code', 'value']]
+                        .drop_duplicates(subset=['col_code'])
+                        .rename(columns={
+                            'col_code': 'industry_code',
+                            'value': 'economic_multiplier_bea'
+                        })
+                    )
+
+                    enhanced = enhanced.merge(bea_multiplier, on='industry_code', how='left')
+                    enhanced['economic_multiplier'] = enhanced['economic_multiplier_bea'].fillna(
+                        enhanced['economic_multiplier']
+                    )
+                    enhanced = enhanced.drop(columns=['economic_multiplier_bea'])
+
+            # Cleanup helper columns
+            for col in ['exiobase_name', 'commodity_code_map', 'industry_code_map']:
+                if col in enhanced.columns:
+                    enhanced = enhanced.drop(columns=[col])
+
+            enhanced['commodity_code'] = enhanced['commodity_code'].fillna('')
+            enhanced['industry_code'] = enhanced['industry_code'].fillna('')
+            enhanced['economic_multiplier'] = enhanced['economic_multiplier'].fillna(1.0)
+
+            mapped_commodity = (enhanced['commodity_code'] != '').sum()
+            mapped_industry = (enhanced['industry_code'] != '').sum()
+            mapped_multiplier = (enhanced['economic_multiplier'] != 1.0).sum()
+
+            print(f"    BEA domestic merge: commodity_code mapped for {mapped_commodity} rows")
+            print(f"    BEA domestic merge: industry_code mapped for {mapped_industry} rows")
+            print(f"    BEA domestic merge: economic_multiplier mapped for {mapped_multiplier} rows")
+
+        except Exception as e:
+            print(f"    ⚠️ Domestic BEA merge fallback used: {e}")
+
         return enhanced
     
     def _analyze_state_domestic_flows(self):
@@ -436,9 +564,6 @@ class USBEATradeFlow:
                     base_trade, bea_data
                 )
                 
-                # Calculate comprehensive US state impacts
-                state_impacts = self.state_analyzer.calculate_state_industry_impacts(state_flows)
-                
                 # Save results
                 output_path = trade_file.parent
                 output_path.mkdir(parents=True, exist_ok=True)
@@ -448,44 +573,63 @@ class USBEATradeFlow:
                 partial_limit = self.config['PROCESSING'].get('partial_factor_limit_interstate', 50)
 
                 if has_satellite and '_industry1' in state_flows.columns:
-                    # Build integer interstate_id from unique state-pair combinations
+                    # Build unique interstate rows
                     unique_pairs = (
                         state_flows[['interstate_id', 'trade_id', '_origin_state', '_destination_state',
-                                     '_industry1', 'state_industry_code', 'level']]
+                                     '_industry1', '_industry2', 'state_industry_code','level', 'employment_impact']]
                         .drop_duplicates(subset=['interstate_id'])
                         .reset_index(drop=True)
                     )
-                    unique_pairs.insert(0, 'interstate_id_int', range(1, len(unique_pairs) + 1))
-                    id_map = dict(zip(unique_pairs['interstate_id'], unique_pairs['interstate_id_int']))
 
                     # Build interstate.csv with state-pair rows and BEA columns merged in
                     interstate_df = pd.DataFrame({
-                        'interstate_id': unique_pairs['interstate_id_int'],
+                        'interstate_id': unique_pairs['interstate_id'],
                         'trade_id':      unique_pairs['trade_id'],
                         'year':          self.config['YEAR'],
                         'region1':       unique_pairs['_origin_state'],
                         'region2':       unique_pairs['_destination_state'],
                         'industry1':     unique_pairs['_industry1'],
+                        'industry2':     unique_pairs['_industry2'],
                         'state_industry_code': unique_pairs['state_industry_code'],
                         'amount':        unique_pairs['level'],
+                        'employment_impact': unique_pairs['employment_impact'],
                     })
 
-                    # Merge BEA-sourced columns from domestic data if available
-                    bea_domestic = getattr(self, 'bea_domestic_data', pd.DataFrame())
-                    if not bea_domestic.empty and 'trade_id' in bea_domestic.columns:
-                        bea_cols = [c for c in ['trade_id', 'commodity_code', 'industry_code', 'economic_multiplier']
-                                    if c in bea_domestic.columns]
-                        interstate_df = interstate_df.merge(bea_domestic[bea_cols], on='trade_id', how='left')
-                    elif self.use_bea_placeholder:
-                        interstate_df['commodity_code'] = ''
-                        interstate_df['industry_code'] = ''
-                        interstate_df['economic_multiplier'] = 1.0
+                    # merge BEA domestic columns using concordance
+                    interstate_df = self._merge_bea_domestic(interstate_df)
+
+                    # Calculate state impacts FROM enriched interstate rows
+                    impact_input = interstate_df[[
+                        'region2',
+                        'state_industry_code',
+                        'amount',
+                        'employment_impact',
+                        'economic_multiplier'
+                    ]].rename(columns={
+                        'region2': '_destination_state'
+                    }).copy()
+
+                    state_impacts = self.state_analyzer.calculate_state_industry_impacts(impact_input)
+
+                    interstate_df = interstate_df[
+                        [
+                            'interstate_id',
+                            'trade_id',
+                            'year',
+                            'region1',
+                            'region2',
+                            'industry1',
+                            'industry2',
+                            'state_industry_code',
+                            'amount',
+                            'commodity_code',
+                            'industry_code',
+                            'economic_multiplier',
+                        ]
+                    ]
 
                     interstate_df.to_csv(output_path / 'interstate.csv', index=False)
                     print(f"    ✅ Created interstate.csv ({len(interstate_df)} state-pair rows)")
-
-                    # Map string interstate_id → integer in state_flows
-                    state_flows['interstate_id'] = state_flows['interstate_id'].map(id_map)
 
                     # Compute level = level × coefficient
                     state_flows['level'] = state_flows['level'] * state_flows['coefficient']
@@ -659,19 +803,32 @@ class USBEATradeFlow:
     
     def _create_trade_price_indices(self, output_path):
         """Create US trade price indices table"""
-        # Basic price indices structure
+
+        original_tradeflow = self.config['TRADEFLOW']
+        trade_file = Path(get_file_path(self.config, 'industryflow'))
+
+        if not trade_file.exists():
+            print("    ⚠️ trade.csv not found — skipping trade_price_indices")
+            return
+
+        trade_df = pd.read_csv(trade_file)
+        # Default values
+        import_index = 1.0
+        export_index = 1.0
+        # Create basic placeholder indices per trade_id
         price_indices = pd.DataFrame({
-            'trade_id': [],
-            'import_price_index': [],
-            'export_price_index': [],
-            'exchange_rate': [],
-            'price_year': [],
-            'currency_adjustment_factor': []
+            'trade_id': trade_df['trade_id'],
+            'import_price_index': 1.0,
+            'export_price_index': 1.0,
+            'exchange_rate': 1.0,
+            'price_year': self.config['YEAR'],
+            'currency_adjustment_factor': 1.0
         })
-        
+
         price_indices.to_csv(output_path / 'trade_price_indices.csv', index=False)
-    
-    
+
+        print(f"    ✅ Created trade_price_indices.csv ({len(price_indices)} rows)")
+
     def _generate_validation_report(self):
         """Generate comprehensive US-BEA validation report"""
         country_info = self.config['COUNTRY']
