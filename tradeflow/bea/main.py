@@ -306,7 +306,8 @@ class USBEATradeFlow:
         262 The Domestic Supply of Commodities by Industries - Summary
         261  The Domestic Supply of Commodities by Industries - Sector
         259             The Use of Commodities by Industries - Summary
-        258              The Use of Commodities by Industries - Sector"""
+        258              The Use of Commodities by Industries - Sector
+        NOTE: BEA API tables use numeric IDs rather than labels. For reference: https://github.com/us-bea/beaapi/blob/main/docs/example_tables.ipynb """
         print("  Fetching US-BEA domestic data...")
         
         try:
