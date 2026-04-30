@@ -2,21 +2,21 @@
 
 Allocates national India trade flow and economic data down to the state/UT level, producing matrices that integrate with the Exiobase MRIO pipeline.
 
-## india-state-allocation.py
+## main.py
 
 ### What it processes
 
-Reads national-level Indian economic data and disaggregates it across 36 states and union territories using sector output shares derived from GSDP and GSVA. The five allocation steps are:
+Reads national-level Indian economic data and disaggregates it across 36 states and union territories using sector output shares derived from GSDP and GSVA. Indian activity labels are matched via `india_us_exiobase_crosswalk.csv` to **Exiobase `industry_id`** values (same 5-character codes used in US `trade-data` outputs, enabling India–US comparisons on a common taxonomy). The five allocation steps are:
 
-1. **State × Sector output matrix** — GSDP scaled by GSVA sector shares per state
-2. **State × Product export matrix** — national TradeStat exports allocated to states via sector output proxies; HS codes mapped to Exiobase products
-3. **State × Product import matrix** — national TradeStat imports allocated to states via GSDP proportions; HS codes mapped to Exiobase products
+1. **State × Sector output matrix** — GSDP scaled by GSVA sector shares per state; columns include `industry_id` and `exiobase_industry_name`
+2. **State × Product export matrix** — national TradeStat exports allocated using state output sliced by `industry_id` where HS→Exiobase mapping resolves; HS codes mapped to Exiobase products
+3. **State × Product import matrix** — national TradeStat imports allocated to states via GSDP proportions; includes `industry_id` per product
 4. **State A-matrices** — national Supply Use Table (SUT) technical coefficients scaled per state; used in-memory only, not written to disk
 5. **india_states.csv** — state-level summary of total output, employment (placeholder), and population (placeholder)
 
 ### Uses config.yaml
 
-Yes — reads `../config.yaml` (one level up, in `exiobase/tradeflow/`) via `config_loader.py` for the processing year (`YEAR`) and reference file paths (`industry.csv`). The year can be overridden with `--year`.
+Yes — reads `../config.yaml` (one level up, in `exiobase/tradeflow/`) via `config_loader.py` for the processing year (`YEAR`), `FOLDERS` (default output under `trade-data/year/{YEAR}/IN/domestic/`), and reference `industry.csv`. The pipeline registry includes an `india` node alongside `us_bea`. The year can be overridden with `--year`.
 
 ### Input data
 
@@ -36,13 +36,14 @@ State files (individual Excel files per state) are used as a fallback when conso
 
 ### Output
 
-Sent to `webroot/trade-data/year/2023/IN/domestic/` by default. Override with `--output-dir`.
+Sent to `../../trade-data/year/{YEAR}/IN/domestic/` by default (from `config.yaml` `FOLDERS.domestic` relative to `tradeflow/`). Override with `--output-dir`.
 
 | File | Description |
 |---|---|
-| `state_sector_output.csv` | State × sector output matrix; columns: `state, sector, output, value_added, allocation_method` |
-| `state_product_export.csv` | State × product export matrix; columns: `state, exiobase_product, export_value, hs_code, allocation_method` |
-| `state_product_import.csv` | State × product import matrix; columns: `state, exiobase_product, import_value, hs_code, allocation_method` |
+| `india_us_exiobase_crosswalk.csv` | Keyword-level India GSVA→Exiobase `industry_id` bridge (copy of `india/india_us_exiobase_crosswalk.csv`) |
+| `state_sector_output.csv` | State × sector output matrix; includes `industry_id`, `exiobase_industry_name` |
+| `state_product_export.csv` | State × product export matrix; includes `industry_id` |
+| `state_product_import.csv` | State × product import matrix; includes `industry_id` |
 | `india_states.csv` | State summary; columns: `State, Output, Employment, Population` |
 | `allocation_report.md` | Processing summary with row counts and totals per matrix |
 | `HS_EXIOBASE_mapping.csv` | Saved to `India_data/` on first run if not already present |
@@ -51,16 +52,16 @@ Sent to `webroot/trade-data/year/2023/IN/domestic/` by default. Override with `-
 
 ```bash
 # Run from exiobase/tradeflow/
-python india/india-state-allocation.py
+python india/main.py
 
 # Specify a different data directory
-python india/india-state-allocation.py --data-dir ../India_data
+python india/main.py --data-dir ../India_data
 
 # Specify a year (overrides config.yaml)
-python india/india-state-allocation.py --year 2019
+python india/main.py --year 2019
 
 # Specify a custom output directory
-python india/india-state-allocation.py --output-dir ../../trade-data/year/2019/IN/domestic
+python india/main.py --output-dir ../../trade-data/year/2019/IN/domestic
 ```
 
 ### Dependencies

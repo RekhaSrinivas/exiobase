@@ -1,5 +1,6 @@
 NOTES:
-  1: COUNTRY.list "default" = run only incomplete ones within these 12 AU, BR, CA, CN, DE, FR, GB, IN, IT, JP, KR, US
+  1: COUNTRY.list "default" = run only incomplete ones within these 12 AU, BR, CA,
+    CN, DE, FR, GB, IN, IT, JP, KR, US
   2: COUNTRY.list "all" = run all (could take hours)
 TRADEFLOW: domestic,imports,exports
 YEAR: 2020
@@ -26,7 +27,8 @@ NODES:
     order: 45
     parent_node: exiobase
     name: US BEA Trade Flow
-    description: Runs exiobase US-BEA tradeflow integration and writes US trade-data outputs.
+    description: Runs exiobase US-BEA tradeflow integration and writes US trade-data
+      outputs.
     link: exiobase/tradeflow
     python_cmds: python us-bea.py
     output_path: ../../../trade-data/year/[year]/US/
@@ -35,6 +37,23 @@ NODES:
     dependencies: '{detected_dependencies}'
     api_keys_required: BEA_API_KEY
     data_sources: Exiobase MRIO,US BEA API,FEDEFL
+    target_repo: trade-data
+  india:
+    source_python: india/main.py
+    node_id: india
+    order: 46
+    parent_node: exiobase
+    name: India State Allocation
+    description: Disaggregates India national statistics to states/UTs and maps Indian GSVA
+      activity text and HS products to Exiobase industry_id codes shared with US trade-data
+      outputs.
+    link: exiobase/tradeflow/india
+    python_cmds: python india/main.py
+    output_path: ../../../trade-data/year/[year]/IN/domestic/
+    output_info: India state matrices; india_us_exiobase crosswalk; aligns industry_id with US MRIO
+    folder_size: unknown
+    dependencies: '{detected_dependencies}'
+    data_sources: India MOSPI GSDP/GSVA, TradeStat HS, India SUT, HS_EXIOBASE_mapping
     target_repo: trade-data
 FOLDERS:
   base: ../../trade-data/year/{year}
