@@ -6,11 +6,77 @@
 <title>Tradeflow</title>
 <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
+<!-- ModelEarth localsite (optional). If missing, stubs below provide a working UI. Serve from http://localhost for fewest issues. -->
 <link type="text/css" rel="stylesheet" href="../../localsite/css/base.css" id="/localsite/css/base.css" />
 <script type="text/javascript" src="../../localsite/js/localsite.js?showheader=true&showsearch=true"></script>
+<script>
+(function () {
+  if (typeof loadMarkdown !== 'function') {
+    window.loadMarkdown = function (path, divId) {
+      var el = document.getElementById(divId);
+      if (!el) return;
+      el.innerHTML = '<p class="schema-loading">Loading <code>' + path + '</code>…</p>';
+      fetch(path)
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          el.innerHTML = '<pre style="white-space:pre-wrap;font-size:13px;line-height:1.45;border:1px solid #e5e7eb;border-radius:8px;padding:12px;background:#fff">' +
+            t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
+        })
+        .catch(function () {
+          el.innerHTML = '<p class="schema-loading">Could not load <code>' + path + '</code>. Open this page through <strong>http://localhost</strong> (not <code>file://</code>) so relative fetches work, or read the file in the repo.</p>';
+        });
+    };
+  }
+  if (typeof waitForElm !== 'function') {
+    window.waitForElm = function (selector) {
+      return new Promise(function (resolve) {
+        var el = document.querySelector(selector);
+        if (el) { resolve(el); return; }
+        var obs = new MutationObserver(function () {
+          var e = document.querySelector(selector);
+          if (e) { obs.disconnect(); resolve(e); }
+        });
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+        setTimeout(function () {
+          obs.disconnect();
+          resolve(document.querySelector(selector));
+        }, 4000);
+      });
+    };
+  }
+  if (typeof getHash !== 'function') {
+    window.getHash = function () {
+      var o = {};
+      var h = (location.hash || '').replace(/^#/, '');
+      if (!h) return o;
+      h.split('&').forEach(function (pair) {
+        var p = pair.split('=');
+        if (p[0]) o[decodeURIComponent(p[0])] = decodeURIComponent((p[1] || '').replace(/\+/g, ' '));
+      });
+      return o;
+    };
+  }
+  if (typeof goHash !== 'function') {
+    window.goHash = function (obj) {
+      var h = getHash();
+      Object.assign(h, obj);
+      var str = Object.keys(h).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(h[k] == null ? '' : String(h[k])); }).join('&');
+      location.hash = str;
+    };
+  }
+  window.addEventListener('hashchange', function () {
+    document.dispatchEvent(new Event('hashChangeEvent'));
+  });
+})();
+</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 
 <style>
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif; margin: 0; color: #111; background: #f8fafc; }
+.content a { color: #2563eb; text-decoration: none; }
+.content a:hover { text-decoration: underline; }
+.contentpadding { padding: 16px 22px; max-width: 1080px; margin: 0 auto; }
+.large-list { font-size: 15px; line-height: 1.5; }
 .content table { background-color: #ddd; }
 .dark .content table { background-color: #555; }
 .content th { background-color: #ccc; }
@@ -103,10 +169,29 @@ th, td { padding: 4px 20px 4px 8px; text-align: left; border-bottom: 1px solid #
   color: #6B7280;
   font-style: italic;
 }
-table {
-  margin-top: 12px;
-  margin-bottom: 16px;
+.crosswalk-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
 }
+.crosswalk-wrap th {
+  background: #f1f5f9;
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 600;
+  border-bottom: 1px solid #e2e8f0;
+}
+.crosswalk-wrap td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+.crosswalk-wrap tr:hover td { background: #f8fafc; }
+.crosswalk-wrap code { font-size: 12px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
 </style>
 
 <script>
@@ -119,7 +204,7 @@ loadMarkdown("AGENTS.md", "agentsDiv", "_parent");
 <body>
 <div class="content contentpadding large-list">
   <div class="noprint" style="float:right;margin-top:6px">
-    <a href="https://github.com/ModelEarth/exiobase/tree/main/tradeflow"><img src="../../localsite/img/icon/github/github.png" style="width:42px"></a>
+    <a href="https://github.com/ModelEarth/exiobase/tree/main/tradeflow" title="Exiobase on GitHub"><img src="https://github.githubassets.com/favicons/favicon.png" width="36" height="36" alt="GitHub"></a>
   </div>
   <a href="../../profile/trade">Trade Profiles</a>
 
@@ -142,10 +227,18 @@ loadMarkdown("AGENTS.md", "agentsDiv", "_parent");
   <!-- Real-time schema diagram -->
   <div class="schema-panel">
     <h3>Industry Database Schema</h3>
+    <p style="margin:0 0 12px 0;font-size:13px;color:#64748b">Live table metadata loads from the Rust API at <code>http://localhost:8081</code>. If it is offline, the diagram below uses static placeholders. Start the API and refresh for row counts.</p>
     <div id="schema-diagram">
-      <div class="schema-loading" id="schemaLoading">Loading schema from Industry Database...</div>
+      <div class="schema-loading" id="schemaLoading">Loading schema from <code>/api/db/industry-schema</code>…</div>
       <svg id="schema-svg" style="display:none"></svg>
     </div>
+  </div>
+
+  <div class="schema-panel" id="crossCountryPanel">
+    <h3>Cross-country alignment (India ↔ US Exiobase <code>industry_id</code>)</h3>
+    <p style="margin:0 0 10px 0;font-size:13px;color:#64748b">Keyword mapping from Indian GSVA-style activity labels to the same 5-character <code>industry_id</code> codes used in US trade-data / MRIO outputs. Source: <code>india/india_us_exiobase_crosswalk.csv</code>.</p>
+    <div class="schema-loading" id="crossCountryLoading">Loading crosswalk…</div>
+    <div id="crossCountryTable" style="display:none;overflow-x:auto;"></div>
   </div>
 
   <div id="readmeDiv"></div>
@@ -516,8 +609,69 @@ loadMarkdown("AGENTS.md", "agentsDiv", "_parent");
     };
   }
 
+  function splitCrosswalkLine(line) {
+    var idx = [];
+    for (var i = 0; i < line.length && idx.length < 3; i++) {
+      if (line.charAt(i) === ',') idx.push(i);
+    }
+    if (idx.length < 3) return line.split(',');
+    return [
+      line.slice(0, idx[0]),
+      line.slice(idx[0] + 1, idx[1]),
+      line.slice(idx[1] + 1, idx[2]),
+      line.slice(idx[2] + 1)
+    ];
+  }
+
+  function loadCrossCountryCrosswalk() {
+    var loading = document.getElementById('crossCountryLoading');
+    var wrap = document.getElementById('crossCountryTable');
+    if (!loading || !wrap) return;
+
+    fetch('india/india_us_exiobase_crosswalk.csv')
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        var lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+        if (!lines.length) throw new Error('empty');
+        var rows = lines.map(splitCrosswalkLine);
+        var head = rows[0];
+        var body = rows.slice(1);
+        var html = '<div class="crosswalk-wrap"><table><thead><tr>';
+        head.forEach(function (h) {
+          html += '<th>' + escapeHtml(h.trim()) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        body.forEach(function (r) {
+          html += '<tr>';
+          for (var c = 0; c < head.length; c++) {
+            var cell = (r[c] != null) ? r[c].trim() : '';
+            if (c === 1) {
+              html += '<td><code>' + escapeHtml(cell) + '</code></td>';
+            } else {
+              html += '<td>' + escapeHtml(cell) + '</td>';
+            }
+          }
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        loading.style.display = 'none';
+        wrap.innerHTML = html;
+        wrap.style.display = 'block';
+      })
+      .catch(function () {
+        loading.innerHTML = 'Could not load <code>india/india_us_exiobase_crosswalk.csv</code>. Use <strong>http://localhost:8080/tradeflow/</strong> (or any local server) instead of <code>file://</code>, and ensure the India crosswalk file exists.';
+      });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   // Load diagram on page load
-  waitForElm('#schema-svg').then(() => loadSchemaDiagram());
+  waitForElm('#schema-svg').then(function () {
+    loadSchemaDiagram();
+    loadCrossCountryCrosswalk();
+  });
 
 })();
 </script>
