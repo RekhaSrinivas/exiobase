@@ -1,3 +1,6 @@
+TO DO: Eliminate "id" (bigserial) since tables have trade_id, factor_id, industry_id
+TO DO: Include a factor_id in the interstate_factor table to related to factor table.
+
 # Primary tables: <span style="color:#aaa">trade, factor, industry</span>
 
 Table naming designed for 3rd graders. [View Report Sample](../../profile/footprint/) from [Exiobase .csv output](https://github.com/ModelEarth/trade-data/tree/main/year) and [US State Data](../../profile/footprint/)
