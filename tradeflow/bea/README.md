@@ -317,7 +317,7 @@ Fallback values (used only with `--use-bea-placeholder` when API is unavailable)
 Note: The BEA API responses are fetched and cached but the per-row merge into `interstate.csv` columns is not yet fully implemented — all rows currently receive the fallback values above regardless of API availability.
 
 **Uses:**
-- BEA API key from `webroot/.env` (`BEA_API_KEY=...`) or `--bea-key` argument
+- BEA API key from `docker/.env` or `webroot/.env` (`BEA_API_KEY=...`) or `--bea-key` argument
 - `bea_cache/*.json` — cached responses from prior runs (24-hour TTL; API key excluded from cache keys)
 
 **Generates:**
