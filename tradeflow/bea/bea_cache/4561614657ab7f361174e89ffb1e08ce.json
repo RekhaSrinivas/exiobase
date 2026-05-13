@@ -1,0 +1,637 @@
+{
+  "BEAAPI": {
+    "Request": {
+      "RequestParam": [
+        {
+          "ParameterName": "USERID",
+          "ParameterValue": "2309A13F-0156-49D5-B33A-680D0C15ABCA"
+        },
+        {
+          "ParameterName": "METHOD",
+          "ParameterValue": "GETDATA"
+        },
+        {
+          "ParameterName": "DATASETNAME",
+          "ParameterValue": "REGIONAL"
+        },
+        {
+          "ParameterName": "TABLENAME",
+          "ParameterValue": "SAGDP2"
+        },
+        {
+          "ParameterName": "LINECODE",
+          "ParameterValue": "12"
+        },
+        {
+          "ParameterName": "GEOFIPS",
+          "ParameterValue": "STATE"
+        },
+        {
+          "ParameterName": "YEAR",
+          "ParameterValue": "2020"
+        },
+        {
+          "ParameterName": "RESULTFORMAT",
+          "ParameterValue": "JSON"
+        }
+      ]
+    },
+    "Results": {
+      "Statistic": "Gross domestic product (GDP) by state: Manufacturing",
+      "UnitOfMeasure": "Millions of current dollars",
+      "PublicTable": "SAGDP2 Gross domestic product (GDP) by state",
+      "UTCProductionTime": "2026-05-12T01:12:41.057",
+      "NoteRef": " ",
+      "Dimensions": [
+        {
+          "Name": "Code",
+          "DataType": "string",
+          "IsValue": "0"
+        },
+        {
+          "Name": "GeoFips",
+          "DataType": "string",
+          "IsValue": "0"
+        },
+        {
+          "Name": "GeoName",
+          "DataType": "string",
+          "IsValue": "0"
+        },
+        {
+          "Name": "TimePeriod",
+          "DataType": "string",
+          "IsValue": "0"
+        },
+        {
+          "Name": "DataValue",
+          "DataType": "numeric",
+          "IsValue": "1"
+        },
+        {
+          "Name": "CL_UNIT",
+          "DataType": "string",
+          "IsValue": "0"
+        },
+        {
+          "Name": "UNIT_MULT",
+          "DataType": "numeric",
+          "IsValue": "0"
+        }
+      ],
+      "Data": [
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "00000",
+          "GeoName": "United States *",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "2156754.0",
+          "NoteRef": "*"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "01000",
+          "GeoName": "Alabama",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "35521.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "02000",
+          "GeoName": "Alaska",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "1275.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "04000",
+          "GeoName": "Arizona",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "34645.8"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "05000",
+          "GeoName": "Arkansas",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "18780.0"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "06000",
+          "GeoName": "California",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "323770.6"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "08000",
+          "GeoName": "Colorado",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "25631.2"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "09000",
+          "GeoName": "Connecticut",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "32643.4"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "10000",
+          "GeoName": "Delaware",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "5270.1"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "11000",
+          "GeoName": "District of Columbia",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "256.2"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "12000",
+          "GeoName": "Florida",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "56536.0"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "13000",
+          "GeoName": "Georgia",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "62477.5"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "15000",
+          "GeoName": "Hawaii",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "1342.9"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "16000",
+          "GeoName": "Idaho",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "8942.5"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "17000",
+          "GeoName": "Illinois",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "100078.4"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "18000",
+          "GeoName": "Indiana",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "90769.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "19000",
+          "GeoName": "Iowa",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "34599.1"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "20000",
+          "GeoName": "Kansas",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "23489.5"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "21000",
+          "GeoName": "Kentucky",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "36307.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "22000",
+          "GeoName": "Louisiana",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "32549.2"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "23000",
+          "GeoName": "Maine",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "7199.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "24000",
+          "GeoName": "Maryland",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "23437.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "25000",
+          "GeoName": "Massachusetts",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "49311.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "26000",
+          "GeoName": "Michigan",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "89928.3"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "27000",
+          "GeoName": "Minnesota",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "45544.4"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "28000",
+          "GeoName": "Mississippi",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "16633.8"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "29000",
+          "GeoName": "Missouri",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "38792.8"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "30000",
+          "GeoName": "Montana",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "2374.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "31000",
+          "GeoName": "Nebraska",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "14995.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "32000",
+          "GeoName": "Nevada",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "7923.6"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "33000",
+          "GeoName": "New Hampshire",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "8940.9"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "34000",
+          "GeoName": "New Jersey",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "52585.3"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "35000",
+          "GeoName": "New Mexico",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "3851.5"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "36000",
+          "GeoName": "New York",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "70158.2"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "37000",
+          "GeoName": "North Carolina",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "89071.3"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "38000",
+          "GeoName": "North Dakota",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "4254.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "39000",
+          "GeoName": "Ohio",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "97936.5"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "40000",
+          "GeoName": "Oklahoma",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "16766.7"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "41000",
+          "GeoName": "Oregon",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "31206.0"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "42000",
+          "GeoName": "Pennsylvania",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "86839.4"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "44000",
+          "GeoName": "Rhode Island",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "4839.3"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "45000",
+          "GeoName": "South Carolina",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "33905.4"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "46000",
+          "GeoName": "South Dakota",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "4491.8"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "47000",
+          "GeoName": "Tennessee",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "56513.8"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "48000",
+          "GeoName": "Texas",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "187447.0"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "49000",
+          "GeoName": "Utah",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "19778.0"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "50000",
+          "GeoName": "Vermont",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "3102.2"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "51000",
+          "GeoName": "Virginia",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "44532.0"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "53000",
+          "GeoName": "Washington",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "51470.9"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "54000",
+          "GeoName": "West Virginia",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "7112.4"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "55000",
+          "GeoName": "Wisconsin",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "59003.5"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "56000",
+          "GeoName": "Wyoming",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "1917.9"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "91000",
+          "GeoName": "New England",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "106037.1"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "92000",
+          "GeoName": "Mideast",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "238546.9"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "93000",
+          "GeoName": "Great Lakes",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "437716.4"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "94000",
+          "GeoName": "Plains",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "166168.0"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "95000",
+          "GeoName": "Southeast",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "489940.6"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "96000",
+          "GeoName": "Southwest",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "242711.0"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "97000",
+          "GeoName": "Rocky Mountain",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "58644.3"
+        },
+        {
+          "Code": "SAGDP2-12",
+          "GeoFips": "98000",
+          "GeoName": "Far West",
+          "TimePeriod": "2020",
+          "CL_UNIT": "Millions of current dollars",
+          "UNIT_MULT": "6",
+          "DataValue": "416989.6"
+        }
+      ],
+      "Notes": [
+        {
+          "NoteRef": "*",
+          "NoteText": "For the all industry total, government and government enterprises, federal civilian, and military, the difference between the United States and sum-of-states reflects overseas activity, economic activity taking place outside the borders of the United States by the military and associated federal civilian support staff."
+        },
+        {
+          "NoteRef": " ",
+          "NoteText": "Last updated: April 9, 2026-- new statistics for 2025."
+        }
+      ]
+    }
+  }
+}

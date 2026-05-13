@@ -353,15 +353,18 @@ class StateTradeAnalyzer:
         flows = []
 
         # Broad industry category used for state allocation weights
-        industry = self._categorize_industry(trade_row.get('industry1', ''))
-        producing_states = self._get_producing_states(industry, bea_data)
-        consuming_states = self._get_consuming_states(industry, bea_data)
+        industry1_cat = self._categorize_industry(trade_row.get('industry1', ''))
+        industry2_cat = self._categorize_industry(trade_row.get('industry2', ''))
+        producing_states = self._get_producing_states(industry1_cat, bea_data)
+        consuming_states = self._get_consuming_states(industry2_cat, bea_data)
         total_value = float(trade_row.get('amount', 0))
 
         industry_id = str(trade_row.get('industry1', ''))
         industry2_id = str(trade_row.get('industry2', ''))
 
         trade_id = trade_row.get('trade_id', '')
+
+        industry = industry1_cat
 
         # First collect all candidate state-pair shares
         state_pairs = []
@@ -371,7 +374,7 @@ class StateTradeAnalyzer:
                     continue
 
                 raw_share = self._calculate_state_flow_share(
-                    origin_state, dest_state, industry, bea_data
+                    origin_state, dest_state, industry1_cat, industry2_cat, bea_data
                 )
 
                 if raw_share > 0:
@@ -545,31 +548,31 @@ class StateTradeAnalyzer:
 
         return self.default_consuming_states
     
-    def _calculate_state_flow_share(self, origin, destination, industry, bea_data):
+    def _calculate_state_flow_share(self, origin, destination, industry1_cat, industry2_cat, bea_data):
         """Calculate the share of flow between two states"""
-        origin_weight = self._get_bea_weight(industry, 'origin', origin, bea_data)
-        dest_weight = self._get_bea_weight(industry, 'destination', destination, bea_data)
+        origin_weight = self._get_bea_weight(industry1_cat, 'origin', origin, bea_data)
+        dest_weight = self._get_bea_weight(industry2_cat, 'destination', destination, bea_data)
         if origin_weight is not None and dest_weight is not None:
             return origin_weight * dest_weight
 
         # Base share using population/GDP proxies
         base_shares = {
-            'CA': 0.12, 'TX': 0.09, 'FL': 0.06, 'NY': 0.06, 'PA': 0.04, 
+            'CA': 0.12, 'TX': 0.09, 'FL': 0.06, 'NY': 0.06, 'PA': 0.04,
             'IL': 0.04, 'OH': 0.04, 'GA': 0.03, 'NC': 0.03, 'MI': 0.03
         }
-        
+
         origin_weight = base_shares.get(origin, 0.01)
         dest_weight = base_shares.get(destination, 0.01)
-        
+
         # Apply industry specialization modifier
         specialization_bonus = 1.0
         if origin in self.industry_state_mapping:
-            if industry in self.industry_state_mapping[origin]:
+            if industry1_cat in self.industry_state_mapping[origin]:
                 specialization_bonus = 1.5
-        
+
         # Calculate flow share (simplified allocation)
         flow_share = (origin_weight * dest_weight * specialization_bonus) / 100
-        
+
         return min(flow_share, 0.1)  # Cap at 10% of total flow
     
     def _calculate_employment_impacts(self, state_flows_df):
@@ -644,8 +647,10 @@ class StateTradeAnalyzer:
         df['row_tax_revenue_impact'] = df['row_total_output_impact'] * df['tax_rate']
 
         # Aggregate flows by destination state and industry
+        state_col = '_origin_state' if '_origin_state' in df.columns else '_destination_state'
+
         state_industry_agg = df.groupby(
-            ['_destination_state', 'state_industry_code'],
+            [state_col, 'state_industry_code'],
             as_index=False
         ).agg({
             'level': 'sum',
@@ -653,11 +658,11 @@ class StateTradeAnalyzer:
             'row_total_output_impact': 'sum',
             'row_tax_revenue_impact': 'sum'
         })
-        
+
         impacts = []
-        
+
         for _, row in state_industry_agg.iterrows():
-            state = row['_destination_state']
+            state = row[state_col]
             industry = row['state_industry_code']
             direct_jobs = float(row['employment_impact'])
             
@@ -762,19 +767,19 @@ class StateTradeAnalyzer:
             s = amounts / t
             return round(float((s ** 2).sum()), 6)
 
-        state_industry_stats = interstate_df.groupby(['region2', 'industry1']).agg(
+        state_industry_stats = interstate_df.groupby(['region2', 'industry2']).agg(
             state_industry_imports_total=('amount', 'sum'),
             state_supplier_count=('region1', 'nunique'),
         )
         state_industry_hhi = (
-            interstate_df.groupby(['region2', 'industry1'])['amount']
+            interstate_df.groupby(['region2', 'industry2'])['amount']
             .apply(_hhi)
             .rename('state_import_concentration')
         )
         state_industry_stats = state_industry_stats.join(state_industry_hhi).reset_index()
 
-        result = interstate_df[['interstate_id', 'region2', 'industry1', 'amount']].merge(
-            state_industry_stats, on=['region2', 'industry1']
+        result = interstate_df[['interstate_id', 'region2', 'industry2', 'amount']].merge(
+            state_industry_stats, on=['region2', 'industry2']
         )
         result['state_source_share'] = (result['amount'] / result['state_industry_imports_total']).round(6)
         result['state_import_intensity'] = (result['state_industry_imports_total'] / total).round(6)

@@ -46,13 +46,13 @@ BEA_ORIGIN_ALLOCATION_LINES = {
 }
 
 BEA_DESTINATION_ALLOCATION_LINES = {
-    'agriculture': ('SAPCE3', 2, 'PCE by state: Goods'),
-    'mining': ('SAPCE3', 36, 'PCE by state: Gasoline and other energy goods'),
-    'utilities': ('SAPCE3', 49, 'PCE by state: Housing and utilities'),
-    'construction': ('SAPCE3', 1, 'PCE by state: Total personal consumption expenditures'),
-    'manufacturing': ('SAPCE3', 2, 'PCE by state: Goods'),
-    'transportation': ('SAPCE3', 68, 'PCE by state: Transportation services'),
-    'services': ('SAPCE3', 47, 'PCE by state: Services'),
+    'agriculture':    ('SAGDP2', 3,  'GDP by state: Agriculture, forestry, fishing and hunting'),
+    'mining':         ('SAGDP2', 6,  'GDP by state: Mining, quarrying, oil, and gas extraction'),
+    'utilities':      ('SAGDP2', 10, 'GDP by state: Utilities'),
+    'construction':   ('SAGDP2', 11, 'GDP by state: Construction'),
+    'manufacturing':  ('SAGDP2', 12, 'GDP by state: Manufacturing'),
+    'transportation': ('SAGDP2', 36, 'GDP by state: Transportation and warehousing'),
+    'services':       ('SAGDP2', 92, 'GDP by state: Private services-providing industries'),
 }
 
 class USBEATradeFlow:
@@ -739,16 +739,13 @@ class USBEATradeFlow:
                     # merge BEA domestic columns using concordance
                     interstate_df = self._merge_bea_domestic(interstate_df)
 
-                    # Calculate state impacts FROM enriched interstate rows
                     impact_input = interstate_df[[
-                        'region2',
+                        'region1',
                         'state_industry_code',
                         'amount',
                         'employment_impact',
                         'economic_multiplier'
-                    ]].rename(columns={
-                        'region2': '_destination_state'
-                    }).copy()
+                    ]].rename(columns={'region1': '_origin_state'}).copy()
 
                     state_impacts = self.state_analyzer.calculate_state_industry_impacts(impact_input)
 
