@@ -324,7 +324,7 @@ Fallback values (used only with `--use-bea-placeholder` when API is unavailable)
 For domestic rows, `economic_multiplier` is populated from BEA Input-Output TableID 61 rows whose `RowDescr` is `Total industry output requirement`, matched by BEA Summary `industry_code`. Rows without a BEA multiplier match keep the fallback value `1.0`.
 
 **Uses:**
-- BEA API key from `webroot/.env` (`BEA_API_KEY=...`) or `--bea-key` argument
+- BEA API key from `docker/.env` or `webroot/.env` (`BEA_API_KEY=...`) or `--bea-key` argument
 - `bea_cache/*.json` — cached responses from prior runs (24-hour TTL; API key excluded from cache keys)
 
 **Generates:**
